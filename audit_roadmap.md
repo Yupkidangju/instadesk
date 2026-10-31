@@ -1,5 +1,7 @@
 # InstaBox Deck Audit Roadmap & Checkpoints
 
+> **현재 단계:** Electron 데스크톱 전환. 기존 Pages/Worker 체크는 역사적 증거이며, 출고 기준은 `docs/electron/architecture.md`와 `docs/superpowers/plans/2026-11-01-electron-desktop.md`의 Windows 패키지·네이티브·보안 게이트다.
+
 **Document Version:** 1.0.0  
 **Audit Standard:** AI_AUDIT_DOC_STANDARD.md & D3D Protocol  
 

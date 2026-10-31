@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased] - 2026-11-01
 
 ### Added
+- Windows x64 Electron 데스크톱 전환을 시작합니다. 로컬 번들·전용 앱 Origin·메인 프로세스 API/PTY 연결로 공용 Worker를 제거합니다. 패키지/실 서비스 검증 전입니다.
 - 공개 사이트 방문자가 각자 배포할 수 있는 제한된 Cloudflare Worker 프록시 템플릿을 추가합니다. 공용 프록시는 제공하지 않습니다.
 - 390px 이상 화면용 노드 서랍과 한 VM의 터미널·데스크톱 동시 SPLIT 화면을 추가했습니다. 구분선은 포인터·키보드로 조절하고 스트림은 화면비를 유지하며 맞춰 표시합니다.
 

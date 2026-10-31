@@ -1,5 +1,7 @@
 # InstaBox Deck Implementation Summary
 
+> **전환 중:** 아래 웹 구조 설명은 기존 구현의 기준선이다. 현재 목표는 `docs/electron/architecture.md`의 Electron 메인 네트워크/PTY 및 Windows x64 포터블 패키지다. 완료 후 파일 맵과 검증 결과를 갱신한다.
+
 **Document Version:** 1.0.0  
 **Target:** Static client app with encrypted local vault and Neo-Swiss UI; real API connectivity requires an approved CORS path  
 

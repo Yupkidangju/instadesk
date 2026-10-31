@@ -42,7 +42,7 @@
 
 ---
 
-## 3. Decision 03: 정적 배포와 실제 API 연결 경계 (Audit 1 수정)
+## 3. Decision 03: 정적 배포와 실제 API 연결 경계 (Electron Decision 07로 대체)
 
 ### 3.1 배경 및 맥락
 실제 `https://api.instabox.sh` 서버의 CORS 응답 검증 결과, API 서버는 `Origin: https://dashboard.instabox.sh`에 대해서만 `Access-Control-Allow-Origin`을 허용합니다.
@@ -78,3 +78,7 @@
 ## 6. Decision 06: 조절 가능한 터미널·데스크톱 화면
 
 같은 VM의 PTY와 데스크톱을 동시에 사용할 때 단일 타일의 SPLIT 탭을 사용한다. 타일 가용 폭 700px부터 좌우 분할을 제공하고, 더 좁으면 상하 분할로 바꾼다. 구분선은 포인터와 키보드로 25~75%를 조절한다. 데스크톱 iframe은 서비스가 보고한 해상도 또는 선택한 기본 해상도를 논리 크기로 두고 `min(가용폭/원본폭, 가용높이/원본높이)` 배율로 맞춘다. 데모 화면은 같은 화면비 안에서 글자를 읽을 수 있게 재배치한다. 외부 iframe의 실제 내부 렌더링은 허가된 실 계정에서 검증해야 한다.
+
+## 7. Decision 07: Electron 데스크톱 전환
+
+사용자가 공개 웹의 CORS/공용 프록시 신뢰 경계를 제거하고 설치형 Electron 앱으로 전면 전환하기로 결정했다. Windows x64를 첫 대상(가정)으로 삼고 기존 React UI와 로컬 암호화 볼트를 `app://instadesk`에 묶는다. REST/SSE는 Electron 메인의 고정 API 라우트, PTY는 메인의 WSS 연결과 제한된 IPC로 처리한다. 렌더러의 `webSecurity`를 끄거나 Node 통합을 켜는 방식은 채택하지 않는다. Desktop iframe의 외부 정책은 실 키 검증 전까지 HOLD다. 기술 경계와 검증은 `docs/electron/architecture.md`에 기록한다. 검증된 데스크톱 대체물이 준비되면 Pages 사이트와 사용자 계정의 개인 Worker 게시를 제거한다.

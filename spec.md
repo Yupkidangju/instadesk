@@ -1,22 +1,21 @@
 # InstaBox Multi-VM Web Console (InstaBox Deck) Specification
 
-**Document Version:** 1.0.0  
-**Status:** Amended for Audit 1 remediation; real API release remains unverified  
+**Document Version:** 2.0.0-draft  
+**Status:** Electron 전환 계약; 실 API/네이티브 검증 전  
 **Last Updated:** 2026-11-01  
 
 ---
 
 ## 1. 개요 및 목표 (Overview & Objectives)
 
-본 프로젝트는 정적 호스팅 가능한 클라이언트 사이드 SPA다. 사용자가 입력한 `instabox.sh` API 키(`ibk_...`)는 Web Crypto AES-256-GCM + PBKDF2로 브라우저 localStorage에 암호화해 보관하고 API 호출 때 복호화한다. 전송 시에는 API 서버 또는 사용자가 선택한 신뢰 프록시에 평문 Bearer 키가 전달된다. 이는 종단 간 암호화가 아닌 로컬 저장 암호화다.
+본 프로젝트는 Windows x64를 우선 대상으로 하는 Electron 데스크톱 앱이다. 기존 React 화면은 앱에 번들해 전용 `app://instadesk` Origin에서 실행한다. 사용자가 입력한 `instabox.sh` API 키(`ibk_...`)는 Web Crypto AES-256-GCM + PBKDF2로 앱 Origin의 localStorage에 암호화해 보관하고, 요청 때만 복호화한다. 실제 API와 PTY 연결은 Electron 메인 프로세스에서 고정 InstaBox 호스트로 직접 수행한다. 공용 Worker나 GitHub Pages는 런타임에 필요하지 않다.
 
 사용자는 **네오스위스(Neo-Swiss) 인터내셔널 타이포그래피 스타일**의 정밀하고 대담한 그리드 인터페이스를 통해 복수의 Linux microVM 상태를 실시간 관제하고, 멀티 타일 분할 뷰를 통해 **실시간 인터랙티브 터미널(PTY WebSocket & SSE Exec)** 및 **그래픽 데스크톱 화면(Stream Iframe & VNC)**을 즉시 확인하고 원격 제어할 수 있습니다.
 
 ### 핵심 성공 기준 (Success Criteria)
-1. **정적 웹 구동**: 정적 호스팅만으로 데모 모드가 동작한다. 실제 API 기능에는 서비스가 해당 웹 Origin을 허용하거나, 사용자가 신뢰하는 HTTPS 역방향 프록시가 필요하다. 정적 파일 배포만으로 실제 VM 연결이 보장되지 않는다. 현재 확장 프로그램은 배포 경로에 포함하지 않는다.
-   - 공개 사이트에는 공용 프록시를 내장하지 않는다. 각 방문자가 자기 Cloudflare Worker(또는 동등한 신뢰 프록시)와 자기 InstaBox 키를 설정한다. 프록시 운영자는 요청 중 평문 키·명령·응답을 볼 수 있다.
+1. **설치형 데스크톱 구동**: Windows x64의 로컬 실행 및 포터블 배포. 사용자는 앱에서 마스터 암호와 자기 API 키를 입력한다. 브라우저 CORS 우회 설정이나 Worker 설치는 요구하지 않는다. 데모 모드는 오프라인에서도 동작한다.
 2. **소비 시점 복호화(On-demand Decryption) 보안 아키텍처**:
-   - `localStorage`에는 오직 암호화된 볼트 레코드(`ciphertext`, `salt`, `iv`)만 영구 저장.
+   - 전용 `app://instadesk` Origin의 `localStorage`에는 오직 암호화된 볼트 레코드(`ciphertext`, `salt`, `iv`)만 영구 저장.
    - 평문 키는 영구 상태로 메모리에 장기 보관되지 않고, 사용자가 입력한 마스터 비밀번호로 파생된 세션 키를 통해서만 API 호출 시점에 즉시 복호화되어 소비 후 가비지 컬렉션(GC).
    - 세션 잠금(Lock) / 해제(Unlock), 비활성 타임아웃(기본 15분) 자동 잠금 지원. 잠금 시 앱이 소유한 PTY 소켓과 진행 중 요청을 종료하고 데스크톱 iframe 및 출력물을 화면에서 제거한다. 이미 외부 탭에 연 뷰어는 앱이 원격으로 취소할 수 없다.
 3. **네오스위스 디자인 시스템(Neo-Swiss Design System)**:
@@ -34,6 +33,8 @@
 
 ## 2. 비목표 (Non-Goals)
 - 백엔드 중앙 집중형 사용자 DB 구축 (100% 클라이언트 로컬 저장 원칙).
+- GitHub Pages·Cloudflare Worker 기반 브라우저 실 API 배포. 기존 Pages 사이트와 개인 Worker 게시를 Electron 대체물이 검증된 뒤 제거한다.
+- 첫 배포의 macOS/Linux 패키지와 코드 서명. Windows x64 동작과 포터블 패키지가 우선이며 서명/타 OS는 별도 범위다.
 - `instabox.sh` 서비스 자체의 인프라 변경 (공식 API 및 WebSocket 규격을 그대로 수용).
 - 화려한 그라데이션, 스큐어모피즘, 불필요한 라운딩 등 네오스위스 디자인 철학에 어긋나는 장식적 요소 배제.
 
@@ -70,7 +71,7 @@ export interface LocalVaultStorage {
 }
 ```
 
-볼트는 브라우저 origin 단위의 localStorage를 사용한다. 동일 origin의 다른 경로에서 실행되는 스크립트도 저장소에 접근할 수 있으므로, `/instadesk/` 경로만으로 격리된다고 간주하지 않는다.
+볼트는 전용 `app://instadesk` Origin의 localStorage를 사용한다. 기존 GitHub Pages Origin의 저장소는 자동으로 이전하지 않으며, 사용자가 Electron 앱에 키를 다시 등록한다. 전용 Origin만으로 XSS 위험이 사라지는 것은 아니다.
 
 ### 3.3 On-demand 소비 수명주기 (Decryption-on-Consumption)
 1. **평문 상시 보관 금지**: 스토어(State)에는 마스터 비밀번호나 평문 API 키 배열을 유지하지 않고, 파생된 `CryptoKey` 객체(또는 세션 런타임 언락 메모리 캐시)만 일시 보관.
@@ -115,6 +116,11 @@ export interface LocalVaultStorage {
 - 한 VM의 `SPLIT` 탭은 PTY 터미널과 Desktop 뷰어를 동시에 마운트한다. 타일의 가용 폭이 700px 이상이면 구분선을 좌우로 25~75% 범위에서 드래그·키보드 조절한다. 더 좁은 타일은 상하 배치한다.
 - Desktop 뷰어는 서버가 보고한 화면 크기 또는 선택한 기본 해상도를 논리 크기로 사용하고, 가용 영역의 너비·높이에 맞춰 원본 화면비를 유지하며 확대/축소한다. 외부 iframe 내부 렌더링 정책은 실 서비스에서 별도 검증한다.
 
+### 4.3 Electron 보안·통신 경계
+- 렌더러는 `nodeIntegration: false`, `contextIsolation: true`, `sandbox: true`, `webSecurity: true`로 로컬 번들만 로드한다. 메인 프로세스는 고정 `https://api.instabox.sh` REST/SSE와 허용된 `wss://api.instabox.sh` 또는 `wss://connect.instabox.sh` PTY만 연결한다.
+- 렌더러는 API 키를 요청 직전에 복호화해 로컬 메인 프로세스로 전달한다. 메인 프로세스는 키를 디스크에 기록하거나 로그로 출력하지 않고, 목적지/메서드/경로를 검증한다. 잠금·프로필 삭제 시 진행 중 요청과 PTY를 종료한다.
+- 좁게 정의한 preload IPC만 렌더러에 노출한다. 원격 Desktop 콘텐츠와 외부 링크는 Node/Electron 권한을 받지 않는다. Desktop iframe 정책과 PTY 티켓 규격은 허가된 실제 키로 검증해야 한다.
+
 ---
 
 ## 5. API 계약 및 기능 규격 (API Contracts)
@@ -145,8 +151,7 @@ export interface LocalVaultStorage {
 
 ### 5.4 키 등록과 연결 확인
 - 사용자가 키 등록을 제출하면 먼저 로컬 볼트에 암호화해 저장하고 목록 조회를 한 번 시도한다. 네트워크·CORS 오류 또는 API 오류는 **연결 미검증** 상태로 알리되 암호화 기록을 자동 삭제하지 않는다. 사용자가 삭제 확인을 통해 직접 제거할 수 있다.
-- Pages에서 프록시 없이 직접 API를 호출하면 CORS 실패가 예상된다. UI는 이 조건과 개인별 Worker 설정 절차를 키 입력 전에 안내한다. Worker origin은 사용자가 페이지 세션마다 명시적으로 신뢰 확인한 후 적용한다.
-- 개인 Worker 적용 전에는 키를 보내지 않는 `GET /health`로 템플릿 식별자와 현재 Pages Origin 허용값을 확인한다. 확인 실패 시 기존 연결 설정을 유지하고 새 목적지로 API 키를 전송하지 않는다.
+- Electron 앱은 메인 프로세스에서 InstaBox로 직접 연결한다. 키 입력 화면에서 Worker/프록시 설정을 요구하지 않는다. 연결 실패 시 암호화된 키는 보존하되 오류 종류를 표시한다.
 
 ---
 

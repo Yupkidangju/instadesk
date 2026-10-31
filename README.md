@@ -1,5 +1,7 @@
 # InstaBox Deck
 
+> **전환 중:** 이 저장소는 Windows x64 Electron 앱으로 전면 전환 중이다. 아래의 Pages/Worker 안내는 기존 웹 배포의 기록이며, 데스크톱 패키지 검증 후 게시를 종료한다. 현재 설계: [Electron 아키텍처](docs/electron/architecture.md).
+
 여러 InstaBox VM을 한 화면에서 살펴보고 터미널, 명령 실행, 데스크톱을 여는 Vite/React 앱입니다. API 키는 브라우저의 암호화된 로컬 볼트에 저장합니다.
 
 ## 실행

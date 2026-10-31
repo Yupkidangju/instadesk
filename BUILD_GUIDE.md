@@ -1,5 +1,7 @@
 # InstaBox Deck Build & Execution Guide
 
+> **전환 중:** 이 가이드의 웹 빌드·Pages 절차는 기존 배포 기록이다. Windows x64 Electron 실행/포터블 패키지 명령은 `docs/electron/architecture.md` 계약에 따라 구현·검증 후 이 문서를 갱신한다.
+
 **Document Version:** 1.1.0 (Audit 1 remediation)  
 **Target Environment:** Node.js 22.12+ (Vite 8 requirement)  
 
