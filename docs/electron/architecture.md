@@ -1,6 +1,6 @@
 # InstaBox Deck Electron 전환 설계
 
-2026-11-01 · **결정:** Windows x64 설치형 앱. 기존 React/Neo-Swiss 화면과 AES-GCM/PBKDF2 볼트 형식은 재사용한다. GitHub Pages와 Cloudflare Worker는 앱 검증 후 게시를 중단한다.
+2026-11-01 · **결정:** Windows x64 설치형 앱. 기존 React/Neo-Swiss 화면과 AES-GCM/PBKDF2 볼트 형식은 재사용한다. GitHub Pages와 개인 Cloudflare Worker 게시를 종료했다. 실 API/PTY/Desktop 수용은 별도 검증 중이다.
 
 ## 실행 구조
 
