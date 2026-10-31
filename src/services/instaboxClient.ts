@@ -40,6 +40,7 @@ export function isLocalDevOrigin(hostname: string, port: string): boolean {
 }
 
 export function getApiBaseUrl(): string {
+  if (typeof window !== 'undefined' && window.instadeskDesktop?.isDesktop) return '/instabox-api';
   if (trustedProxyOrigin) return `${trustedProxyOrigin}/instabox-api`;
   if (typeof window !== 'undefined' && isLocalDevOrigin(window.location.hostname, window.location.port)) {
     return '/instabox-api';

@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { resolveAppAsset } from './appProtocol';
+import { proxyApiRequest } from './apiGateway';
 
 protocol.registerSchemesAsPrivileged([{
   scheme: 'app',
@@ -46,6 +47,7 @@ function createWindow(): void {
 app.whenReady().then(() => {
   session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   protocol.handle('app', async (request) => {
+    if (new URL(request.url).pathname.startsWith('/instabox-api/')) return proxyApiRequest(request);
     const asset = resolveAppAsset(request.url, rendererRoot);
     if (!asset || !fs.existsSync(asset) || !fs.statSync(asset).isFile()) {
       return new Response('Not found', { status: 404 });
