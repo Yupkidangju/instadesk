@@ -33,4 +33,4 @@
 - **브라우저 확장 프로그램 미설치 시 외부 도메인 CORS**:
   - 정적 외부 도메인에서 실 API 사용에는 서비스의 Origin 허용 또는 사용자가 신뢰하는 HTTPS 프록시가 필요하다. 동봉 MV3 규칙은 비활성화됐다.
   - 조건: 최종 Pages URL에서 허가된 키와 운영 프록시로 REST/SSE/PTY/Desktop을 검증한다. 로컬 개발 프록시는 배포 대안이 아니다.
-- **Pages 배포**: 사용자가 Pages 설정과 수동 배포를 시도하기로 했다. 실제 URL·자산·데모 흐름을 확인하기 전까지 배포 게이트는 HOLD다.
+- **Pages 배포**: 2026-11-01 GitHub Actions 빌드·배포와 실제 URL의 JS/CSS·데모 흐름을 확인했다. 실 API/PTY/Desktop 게이트는 별도로 HOLD다. 증거: `docs/audit/pages_deployment_2026-11-01.md`.

@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 390px 이상 화면용 노드 서랍과 한 VM의 터미널·데스크톱 동시 SPLIT 화면을 추가했습니다. 구분선은 포인터·키보드로 조절하고 스트림은 화면비를 유지하며 맞춰 표시합니다.
 
 ### Changed
+- GitHub Pages 게시 소스를 GitHub Actions로 전환하고 빌드된 `dist/`를 배포했습니다. 공개 URL의 데모 화면과 자산 로드를 확인했습니다.
 - 감사 3의 저장 스키마·프록시 PTY 경로·부분 동기화 계약을 맞추고 단일 타일을 전폭으로 표시합니다.
 - 볼트 잠금 시 Broadcast 명령/출력을 지우고, 프로필 제거 전에 대상 확인을 요구하며 해당 프로필의 제어 채널만 종료합니다.
 - 감사 1의 정적 배포 계약을 명확히 하고 Vite 자산 경로를 `/instadesk/`로 고정했습니다. 실제 API에는 허용된 Origin 또는 신뢰하는 HTTPS 프록시가 필요합니다.

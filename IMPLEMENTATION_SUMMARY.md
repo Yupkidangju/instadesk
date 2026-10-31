@@ -88,6 +88,10 @@ D:/web/instadesk/
 - 개발 루프백과 신뢰 프록시의 API/Connect 경로를 분리했다. 허가된 실제 프록시·WebSocket 핸드셰이크는 미검증이다.
 - SPLIT 뷰의 조절 구분선과 Desktop 화면비 맞춤을 추가했다. 사용한 회귀·브라우저 증거와 잔여 HOLD 조건은 `docs/audit/remediation_results_3.md`에 기록한다.
 
+## Pages 배포 확인 (2026-11-01)
+
+Pages가 `main /`의 개발용 HTML을 직접 제공해 빈 화면이 나왔다. GitHub Pages 게시 소스를 Actions로 변경하고 기존 수동 배포 워크플로가 생성한 `dist/` artifact를 배포했다. 공개 URL의 빌드 자산과 데모 VM 4대 렌더링을 확인했다. 상세 증거는 `docs/audit/pages_deployment_2026-11-01.md`; 실 API 연결은 미검증이다.
+
 ## Audit 1 수정 상태 (2026-11-01)
 
 - `spec.md`와 `DESIGN_DECISIONS.md`의 정적 배포/보안 계약을 우선 수정했다. `BUILD_GUIDE.md`와 `README.md`에 `/instadesk/` 프로젝트 사이트, 수동 Pages 배포, 실 API 검증 필요성을 기록했다.

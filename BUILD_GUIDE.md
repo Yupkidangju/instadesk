@@ -42,6 +42,8 @@ npm run preview
 ```
 GitHub Pages는 저장소의 Pages 설정에서 GitHub Actions를 소스로 선택합니다. `.github/workflows/pages.yml`은 push 때 빌드와 검사를 실행하며, 실제 배포는 사용자가 수동 실행(`workflow_dispatch`)할 때만 시도합니다. Vite 자산 경로는 `/instadesk/`입니다. `dist/`에 확장 프로그램은 포함되지 않습니다. 실제 URL에서 자산과 네트워크 요청을 다시 확인해야 합니다.
 
+2026-11-01에 Pages 게시 소스를 `main /` 직접 게시에서 GitHub Actions(`build_type: workflow`)로 바꾸고 수동 배포 [실행 41224589610](https://github.com/Yupkidangju/instadesk/actions/runs/41224589610)을 완료했습니다. 현재 [공개 URL](https://yupkidangju.github.io/instadesk/)의 빌드 JS/CSS와 데모 화면이 확인됐습니다. 브라우저가 이전 소스 HTML을 최대 10분 캐시했을 수 있으므로 빈 화면이 계속 보이면 강력 새로고침(Ctrl+Shift+R) 또는 시크릿 창에서 열어 보세요. 배포 증거는 `docs/audit/pages_deployment_2026-11-01.md`에 있습니다.
+
 ---
 
 ## 4. 실제 API 연결 조건
