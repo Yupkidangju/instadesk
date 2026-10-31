@@ -78,6 +78,8 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
 
     let isDisposed = false;
     let unregisterSocket: (() => void) | null = null;
+    let unregisterDesktop: (() => void) | null = null;
+    const bridge = window.instadeskDesktop;
 
     // 2. 터미널 연결 시작
     const connectTerminal = async () => {
@@ -139,6 +141,38 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
         );
         if (isDisposed || !useAppStore.getState().isVaultUnlocked || !useAppStore.getState().profiles.some((p) => p.id === profileId)) {
           useAppStore.getState().releaseSession(tileId);
+          return;
+        }
+
+        if (bridge) {
+          unregisterDesktop = bridge.onTerminalEvent((event) => {
+            if (isDisposed || event.id !== tileId) return;
+            if (event.type === 'open') {
+              setStatus('connected');
+              useAppStore.getState().activateSession(tileId);
+              term.writeln('\x1b[1;32m● CONNECTED TO INSTABOX PTY GATEWAY\x1b[0m\r\n');
+              void bridge.resizeTerminal(tileId, term.cols, term.rows).catch(() => {});
+            } else if (event.type === 'data') {
+              if (typeof event.data === 'string') {
+                try {
+                  const message = JSON.parse(event.data);
+                  if (message.type === 'exit') {
+                    term.writeln(`\r\n\x1b[33m[Session exited with code ${message.code}]\x1b[0m`);
+                    void bridge.closeTerminal(tileId);
+                    setStatus('disconnected');
+                  }
+                } catch { term.write(event.data); }
+              } else if (event.data) term.write(event.data);
+            } else {
+              useAppStore.getState().releaseSession(tileId);
+              setStatus('disconnected');
+              if (event.type === 'error') setErrorMessage('PTY connection failed. Check the key and machine state.');
+            }
+          });
+          await bridge.openTerminal({ id: tileId, profileId, sessionName, url, protocols: protocols ?? [] });
+          if (isDisposed) { void bridge.closeTerminal(tileId); return; }
+          term.onData((data) => { void bridge.sendTerminal(tileId, data).catch(() => {}); });
+          term.onResize(({ cols, rows }) => { void bridge.resizeTerminal(tileId, cols, rows).catch(() => {}); });
           return;
         }
 
@@ -222,6 +256,8 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
         wsRef.current = null;
       }
       unregisterSocket?.();
+      unregisterDesktop?.();
+      if (bridge) void bridge.closeTerminal(tileId);
       useAppStore.getState().releaseSession(tileId);
       term.dispose();
     };

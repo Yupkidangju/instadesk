@@ -1,9 +1,10 @@
-import { app, BrowserWindow, net, protocol, session, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, net, protocol, session, shell } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { resolveAppAsset } from './appProtocol';
 import { proxyApiRequest } from './apiGateway';
+import { TerminalGateway, type TerminalOpenRequest } from './terminalGateway';
 
 protocol.registerSchemesAsPrivileged([{
   scheme: 'app',
@@ -28,6 +29,45 @@ function createWindow(): void {
       sandbox: true,
       webSecurity: true,
     },
+  });
+
+  const terminals = new TerminalGateway((event) => {
+    if (!window.isDestroyed()) window.webContents.send('terminal:event', event);
+  });
+  const ownRenderer = (event: Electron.IpcMainInvokeEvent): void => {
+    if (event.sender !== window.webContents || !event.senderFrame?.url.startsWith(`${appOrigin}/`)) {
+      throw new Error('Untrusted terminal caller');
+    }
+  };
+  ipcMain.handle('terminal:open', (event, request: TerminalOpenRequest) => {
+    ownRenderer(event);
+    terminals.open(request);
+  });
+  ipcMain.handle('terminal:send', (event, id: string, data: string) => {
+    ownRenderer(event);
+    terminals.send(id, data);
+  });
+  ipcMain.handle('terminal:resize', (event, id: string, cols: number, rows: number) => {
+    ownRenderer(event);
+    terminals.resize(id, cols, rows);
+  });
+  ipcMain.handle('terminal:close', (event, id: string) => {
+    ownRenderer(event);
+    terminals.close(id);
+  });
+  ipcMain.handle('terminal:closeProfile', (event, profileId: string) => {
+    ownRenderer(event);
+    terminals.closeProfile(profileId);
+  });
+  ipcMain.handle('terminal:closeAll', (event) => {
+    ownRenderer(event);
+    terminals.closeAll();
+  });
+  window.on('closed', () => {
+    terminals.closeAll();
+    for (const channel of ['terminal:open', 'terminal:send', 'terminal:resize', 'terminal:close', 'terminal:closeProfile', 'terminal:closeAll']) {
+      ipcMain.removeHandler(channel);
+    }
   });
 
   window.webContents.on('will-navigate', (event, target) => {

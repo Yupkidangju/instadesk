@@ -1,12 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import { proxyApiRequest } from '../electron/apiGateway';
 import { getApiBaseUrl } from '../src/services/instaboxClient';
+import type { DesktopBridge } from '../src/types/desktopBridge';
 
 const appUrl = 'app://instadesk/instabox-api/v1/machines';
 
 describe('Electron main API gateway', () => {
   it('selects the local app route in the Electron renderer', () => {
-    window.instadeskDesktop = { isDesktop: true };
+    window.instadeskDesktop = { isDesktop: true } as DesktopBridge;
     expect(getApiBaseUrl()).toBe('/instabox-api');
     delete window.instadeskDesktop;
   });

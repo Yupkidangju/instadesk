@@ -92,6 +92,7 @@ export const useAppStore = create<AppStoreState>((set, get) => {
     if (!unlocked) {
       refreshGeneration += 1;
       instaboxClient.cancelActiveRequests();
+      void window.instadeskDesktop?.closeAll();
     }
     set({
       isVaultInitialized: cryptoVault.isInitialized(),
@@ -193,6 +194,7 @@ export const useAppStore = create<AppStoreState>((set, get) => {
       if (!get().profiles.some((profile) => profile.id === id)) return;
       refreshGeneration += 1;
       instaboxClient.cancelProfile(id);
+      void window.instadeskDesktop?.closeProfile(id);
       const sessionStates = Object.fromEntries(
         Object.entries(get().sessionStates).filter(([, entry]) => entry.profileId !== id)
       );
