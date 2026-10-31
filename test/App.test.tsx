@@ -43,7 +43,7 @@ describe('InstaBox Deck App Full Integration', () => {
 
     // 푸터 확인
     expect(screen.getByText('SYSTEMS OPERATIONAL')).toBeDefined();
-    expect(screen.getByText('STATIC CLIENT // REAL API NEEDS CORS PATH')).toBeDefined();
+    expect(screen.getByText('ELECTRON DESKTOP // DIRECT INSTABOX API')).toBeDefined();
   });
 
   it('should open Key Vault modal upon clicking KEY VAULT button', () => {

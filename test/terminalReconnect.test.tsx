@@ -22,43 +22,37 @@ vi.mock('@xterm/xterm', () => ({ Terminal: class {
 vi.mock('@xterm/addon-fit', () => ({ FitAddon: class { fit() {} } }));
 vi.mock('@xterm/addon-web-links', () => ({ WebLinksAddon: class {} }));
 
-class FakeSocket {
-  static instances: FakeSocket[] = [];
-  static OPEN = 1;
-  readyState = 0;
-  binaryType = '';
-  onopen: (() => void) | null = null;
-  onclose: (() => void) | null = null;
-  onerror: (() => void) | null = null;
-  onmessage: (() => void) | null = null;
-  constructor() { FakeSocket.instances.push(this); }
-  send() {}
-  close() { this.readyState = 3; this.onclose?.(); }
-}
-
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   cryptoVault.resetVault();
-  FakeSocket.instances = [];
   delete window.instadeskDesktop;
 });
 
 describe('PTY retry', () => {
-  it('opens a new WebSocket when retry is clicked with the same session name', async () => {
+  it('opens a new desktop PTY when retry is clicked with the same session name', async () => {
     await cryptoVault.initializeVault('test-password');
     const profileId = await cryptoVault.addProfile('Test', 'ibk_test');
     vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
-    vi.stubGlobal('WebSocket', FakeSocket);
-    vi.spyOn(instaboxClient, 'getTerminalWebSocketUrl').mockResolvedValue({ url: 'wss://api.instabox.sh/terminal', protocols: [] });
+    const openTerminal = vi.fn().mockResolvedValue(undefined);
+    const closeTerminal = vi.fn().mockResolvedValue(undefined);
+    window.instadeskDesktop = {
+      isDesktop: true, openTerminal, closeTerminal,
+      closeAll: vi.fn(), closeProfile: vi.fn(), sendTerminal: vi.fn(), resizeTerminal: vi.fn(),
+      onTerminalEvent: vi.fn().mockReturnValue(() => {}),
+    } as DesktopBridge;
+    vi.spyOn(instaboxClient, 'getTerminalWebSocketUrl').mockResolvedValue({
+      url: 'wss://api.instabox.sh/v1/terminal',
+      protocols: ['instabox-terminal.v1', 'instabox-access-token.ok'],
+    });
     render(React.createElement(TerminalView, {
       tileId: 'tile-retry', machineId: 'm_1', profileId, sessionName: 'main', onSessionChange: vi.fn(),
     }));
-    await waitFor(() => expect(FakeSocket.instances).toHaveLength(1));
+    await waitFor(() => expect(openTerminal).toHaveBeenCalledTimes(1));
     fireEvent.click(screen.getByTitle('Reconnect Terminal Session'));
-    await waitFor(() => expect(FakeSocket.instances).toHaveLength(2));
-    expect(FakeSocket.instances[0].readyState).toBe(3);
+    await waitFor(() => expect(openTerminal).toHaveBeenCalledTimes(2));
+    expect(closeTerminal).toHaveBeenCalledWith('tile-retry');
   });
 
   it('opens the desktop bridge and closes its PTY when the vault locks', async () => {

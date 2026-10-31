@@ -12,54 +12,11 @@ import {
   ProcessListResponse,
 } from '../types/instabox';
 
-let trustedProxyOrigin: string | null = null;
-
-export function getTrustedProxyOrigin(): string | null {
-  return trustedProxyOrigin;
-}
-
-export function validateTrustedProxyOrigin(value: string): string {
-  const url = new URL(value.trim());
-  if (url.protocol !== 'https:' || url.username || url.password || url.pathname !== '/' || url.search || url.hash) {
-    throw new Error('Proxy must be an HTTPS origin without a path, credentials, query or fragment.');
-  }
-  return url.origin;
-}
-
-export function setTrustedProxyOrigin(value: string): string | null {
-  if (!value.trim()) {
-    trustedProxyOrigin = null;
-    return null;
-  }
-  trustedProxyOrigin = validateTrustedProxyOrigin(value);
-  return trustedProxyOrigin;
-}
-
-export function isLocalDevOrigin(hostname: string, port: string): boolean {
-  return ['localhost', '127.0.0.1'].includes(hostname) && port === '5173';
-}
-
 export function getApiBaseUrl(): string {
-  if (typeof window !== 'undefined' && window.instadeskDesktop?.isDesktop) return '/instabox-api';
-  if (trustedProxyOrigin) return `${trustedProxyOrigin}/instabox-api`;
-  if (typeof window !== 'undefined' && isLocalDevOrigin(window.location.hostname, window.location.port)) {
-    return '/instabox-api';
-  }
-  return 'https://api.instabox.sh';
+  return '/instabox-api';
 }
 
 export function getWsBaseUrl(): string {
-  const base = getApiBaseUrl();
-  if (base.startsWith('http://')) {
-    return base.replace('http://', 'ws://');
-  }
-  if (base.startsWith('https://')) {
-    return base.replace('https://', 'wss://');
-  }
-  if (base.startsWith('/')) {
-    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${proto}//${window.location.host}${base}`;
-  }
   return 'wss://api.instabox.sh';
 }
 
@@ -131,7 +88,6 @@ class InstaboxClientService {
   private activeRequests = new AbortController();
   private requestEpoch = 0;
   private profileRequests = new Map<string, AbortController>();
-  private controlSockets = new Map<WebSocket, string>();
 
   private profileSignal(profileId: string): AbortSignal {
     let controller = this.profileRequests.get(profileId);
@@ -142,20 +98,9 @@ class InstaboxClientService {
     return controller.signal;
   }
 
-  public registerControlSocket(socket: WebSocket, profileId: string): () => void {
-    this.controlSockets.set(socket, profileId);
-    return () => this.controlSockets.delete(socket);
-  }
-
   public cancelProfile(profileId: string): void {
     this.profileRequests.get(profileId)?.abort();
     this.profileRequests.delete(profileId);
-    for (const [socket, owner] of this.controlSockets) {
-      if (owner === profileId) {
-        socket.close();
-        this.controlSockets.delete(socket);
-      }
-    }
   }
 
   public cancelActiveRequests(): void {
@@ -164,8 +109,6 @@ class InstaboxClientService {
     this.activeRequests = new AbortController();
     for (const controller of this.profileRequests.values()) controller.abort();
     this.profileRequests.clear();
-    for (const socket of this.controlSockets.keys()) socket.close();
-    this.controlSockets.clear();
   }
 
   /**
@@ -433,23 +376,13 @@ class InstaboxClientService {
     try {
       const ticket = await this.createAccessTicket(profileId, machineId, 'terminal');
       if (ticket.token && ticket.url) {
-        let wsUrl = ticket.url;
-        const parsed = new URL(wsUrl);
+        const parsed = new URL(ticket.url);
         const allowedHosts = ['api.instabox.sh', 'connect.instabox.sh'];
         if (parsed.protocol !== 'wss:' || !allowedHosts.includes(parsed.hostname)) {
           throw new Error('Access ticket returned an unexpected WebSocket destination');
         }
-        const route = parsed.hostname === 'connect.instabox.sh' ? '/instabox-connect' : '/instabox-api';
-        if (trustedProxyOrigin) {
-          wsUrl = `${trustedProxyOrigin.replace(/^https:/, 'wss:')}${route}${parsed.pathname}${parsed.search}`;
-        }
-        // 로컬 개발에서는 업스트림 호스트별 Vite WebSocket 프록시를 사용한다.
-        if (!trustedProxyOrigin && typeof window !== 'undefined' && isLocalDevOrigin(window.location.hostname, window.location.port)) {
-          const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-          wsUrl = `${proto}//${window.location.host}${route}${parsed.pathname}${parsed.search}`;
-        }
         return {
-          url: wsUrl,
+          url: ticket.url,
           protocols: [ticket.protocol || 'instabox-terminal.v1', `instabox-access-token.${ticket.token}`],
         };
       }

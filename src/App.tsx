@@ -59,7 +59,7 @@ export const App: React.FC = () => {
             <span className="font-bold">SYSTEMS OPERATIONAL</span>
           </span>
           <span className="text-zinc-700">|</span>
-          <span>STATIC CLIENT // REAL API NEEDS CORS PATH</span>
+          <span>ELECTRON DESKTOP // DIRECT INSTABOX API</span>
           <span className="text-zinc-700">|</span>
           <span>DEMO READY</span>
         </div>
@@ -67,7 +67,7 @@ export const App: React.FC = () => {
         <div className="flex items-center space-x-3">
           <span>VAULT: AES-256-GCM + PBKDF2</span>
           <span className="text-zinc-700">|</span>
-          <span className="text-zinc-400">INSTABOX DECK v1.0.0</span>
+          <span className="text-zinc-400">INSTABOX DECK DESKTOP</span>
         </div>
       </footer>
 

@@ -1,7 +1,7 @@
 // src/components/modals/ApiKeyModal.tsx
 import React, { useEffect, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
-import { getTrustedProxyOrigin, instaboxClient, isLocalDevOrigin, setTrustedProxyOrigin, validateTrustedProxyOrigin } from '../../services/instaboxClient';
+import { instaboxClient } from '../../services/instaboxClient';
 import {
   Key,
   Shield,
@@ -10,7 +10,6 @@ import {
   Lock,
   Unlock,
   Plus,
-  Globe,
   CheckCircle2,
 } from 'lucide-react';
 
@@ -27,7 +26,6 @@ export const ApiKeyModal: React.FC = () => {
     addProfile,
     removeProfile,
     refreshMachines,
-    clearAllTiles,
   } = useAppStore();
 
   const [masterPassword, setMasterPassword] = useState('');
@@ -36,14 +34,9 @@ export const ApiKeyModal: React.FC = () => {
   const [newApiKey, setNewApiKey] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [customProxyUrl, setCustomProxyUrl] = useState(getTrustedProxyOrigin() ?? '');
-  const [proxyTrusted, setProxyTrusted] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<{ id: string; label: string } | null>(null);
 
   const [isValidating, setIsValidating] = useState(false);
-  const [isApplyingProxy, setIsApplyingProxy] = useState(false);
-  const needsOwnWorker = typeof window !== 'undefined' &&
-    !isLocalDevOrigin(window.location.hostname, window.location.port) && !getTrustedProxyOrigin();
 
   useEffect(() => {
     if (!isVaultUnlocked) setPendingDelete(null);
@@ -138,43 +131,13 @@ export const ApiKeyModal: React.FC = () => {
         const reason = error.message || 'Connection check failed';
         const nextStep = error.status
           ? 'Check this key and its InstaBox permissions.'
-          : 'Apply your own trusted Worker below, then refresh the machine list.';
+          : 'Check your network connection and retry the machine list.';
         setErrorMsg(`[SAVED ENCRYPTED · CONNECTION UNVERIFIED] ${reason}. ${nextStep}`);
       }
     } catch (err: unknown) {
       setErrorMsg((err as Error).message);
     } finally {
       setIsValidating(false);
-    }
-  };
-
-  const handleApplyProxy = async () => {
-    setErrorMsg(null);
-    setIsApplyingProxy(true);
-    try {
-      if (customProxyUrl.trim() && !proxyTrusted) {
-        throw new Error('Confirm that you trust the proxy operator with your API key.');
-      }
-      if (customProxyUrl.trim()) {
-        const candidate = validateTrustedProxyOrigin(customProxyUrl);
-        const health = await fetch(`${candidate}/health`, {
-          method: 'GET', credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer',
-        });
-        if (!health.ok) throw new Error('Worker health check failed. No API key was sent.');
-        const result = await health.json() as { ok?: boolean; service?: string; allowedOrigin?: string };
-        if (result.ok !== true || result.service !== 'instadesk-personal-bridge' || result.allowedOrigin !== window.location.origin) {
-          throw new Error('Worker identity or allowed site origin does not match. No API key was sent.');
-        }
-      }
-      const origin = setTrustedProxyOrigin(customProxyUrl);
-      instaboxClient.cancelActiveRequests();
-      clearAllTiles();
-      setSuccessMsg(origin ? `Trusted proxy configured for this page session: ${origin}` : 'Reset to default API origin.');
-      void refreshMachines();
-    } catch (error) {
-      setErrorMsg((error as Error).message);
-    } finally {
-      setIsApplyingProxy(false);
     }
   };
 
@@ -227,7 +190,7 @@ export const ApiKeyModal: React.FC = () => {
             {!isVaultInitialized ? (
               <form onSubmit={handleInitVault} className="space-y-2">
                 <p className="text-zinc-400 text-[11px]">
-                  Create a master password to encrypt your API keys. Keys will be stored encrypted in your browser's localStorage and decrypted strictly on-demand.
+                  Create a master password to encrypt your API keys. Keys are stored in this app's local vault and decrypted only for a request.
                 </p>
                 <div className="grid grid-cols-2 gap-2">
                   <input
@@ -296,10 +259,7 @@ export const ApiKeyModal: React.FC = () => {
                 <span>02 // REGISTER INSTABOX API KEY</span>
               </span>
 
-              {needsOwnWorker && <div role="note" className="border border-amber-800 bg-amber-950/50 p-2 text-amber-200 text-[11px] leading-relaxed">
-                This public site cannot reach InstaBox directly from your browser. Deploy and apply <strong>your own Worker</strong> before checking a real key. If the check fails, the key stays encrypted in your vault.{' '}
-                <a href="https://github.com/Yupkidangju/instadesk/blob/main/worker/README.md" target="_blank" rel="noopener noreferrer" className="underline">Personal Worker guide</a>
-              </div>}
+              <p role="note" className="text-zinc-400 text-[11px]">This desktop app connects directly to InstaBox. If verification fails, the key remains encrypted until you remove its profile.</p>
 
               <div className="space-y-2">
                 <input
@@ -399,45 +359,12 @@ export const ApiKeyModal: React.FC = () => {
             )}
           </div>
 
-          {/* 4. 개인 Worker 연결 설정 */}
-          <div id="worker-connection" className="p-3 border border-zinc-800 bg-zinc-900/40 space-y-2">
-            <div className="flex items-center space-x-1.5 text-zinc-300 font-bold">
-              <Globe className="w-3.5 h-3.5 text-blue-400" />
-              <span>04 // PERSONAL WORKER CONNECTION</span>
-            </div>
-            <p className="text-zinc-500 text-[11px] leading-relaxed">
-              Demo mode needs no Worker. For real API access, deploy your own Cloudflare Worker and enter its HTTPS origin. Its operator receives your plaintext Bearer API key, commands and responses. The bundled extension is disabled.{' '}
-              <a href="https://github.com/Yupkidangju/instadesk/blob/main/worker/README.md" target="_blank" rel="noopener noreferrer" className="underline">Deployment guide</a>
-            </p>
-            <div className="flex space-x-2">
-              <input
-                type="text"
-                placeholder="https://your-cors-proxy.workers.dev (optional)"
-                value={customProxyUrl}
-                onChange={(e) => { setCustomProxyUrl(e.target.value); setProxyTrusted(false); }}
-                className="flex-1 bg-zinc-950 border border-zinc-800 p-1.5 text-xs text-zinc-200 focus:outline-none"
-              />
-              <button
-                type="button"
-                onClick={handleApplyProxy}
-                disabled={isApplyingProxy}
-                className="neo-btn px-3 py-1"
-              >
-                {isApplyingProxy ? 'CHECKING...' : 'APPLY'}
-              </button>
-            </div>
-            {getTrustedProxyOrigin() && <p className="text-[11px] text-emerald-300">ACTIVE THIS PAGE SESSION: {getTrustedProxyOrigin()}</p>}
-            {customProxyUrl.trim() && <label className="flex items-start gap-2 text-amber-300 text-[11px]">
-              <input type="checkbox" checked={proxyTrusted} onChange={(e) => setProxyTrusted(e.target.checked)} />
-              <span>I control or explicitly trust this proxy with full API key access.</span>
-            </label>}
-          </div>
         </div>
 
         {/* 모달 푸터 */}
         <div className="p-3 bg-zinc-900 border-t border-zinc-800 flex items-center justify-between flex-shrink-0">
           <span className="text-zinc-500 text-[10px]">
-            Local encrypted vault // API keys are sent in plaintext to the selected API origin
+            Local encrypted vault // API requests connect directly to api.instabox.sh
           </span>
           <button onClick={handleClose} className="neo-btn px-4 py-1">
             CLOSE

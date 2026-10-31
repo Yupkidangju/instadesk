@@ -25,7 +25,6 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
 
   const [status, setStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -77,7 +76,6 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
     fitAddonRef.current = fitAddon;
 
     let isDisposed = false;
-    let unregisterSocket: (() => void) | null = null;
     let unregisterDesktop: (() => void) | null = null;
     const bridge = window.instadeskDesktop;
 
@@ -130,7 +128,7 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
         return;
       }
 
-      // 실제 WebSocket PTY 연결
+      // 실제 PTY 소켓은 Electron 메인 프로세스가 소유한다.
       try {
         if (!useAppStore.getState().reserveSession(tileId, profileId)) {
           throw new Error('Eight PTY connections are already opening or active.');
@@ -175,63 +173,7 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
           term.onResize(({ cols, rows }) => { void bridge.resizeTerminal(tileId, cols, rows).catch(() => {}); });
           return;
         }
-
-        const ws = new WebSocket(url, protocols);
-        unregisterSocket = instaboxClient.registerControlSocket(ws, profileId);
-        ws.binaryType = 'arraybuffer';
-        wsRef.current = ws;
-
-        ws.onopen = () => {
-          if (isDisposed) { ws.close(); return; }
-          setStatus('connected');
-          useAppStore.getState().activateSession(tileId);
-          term.writeln('\x1b[1;32m● CONNECTED TO INSTABOX PTY GATEWAY\x1b[0m\r\n');
-          // 리사이즈 전송
-          ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
-        };
-
-        ws.onmessage = (event) => {
-          if (typeof event.data === 'string') {
-            try {
-              const msg = JSON.parse(event.data);
-              if (msg.type === 'exit') {
-                term.writeln(`\r\n\x1b[33m[Session exited with code ${msg.code}]\x1b[0m`);
-                setStatus('disconnected');
-                ws.close();
-              }
-            } catch {
-              term.write(event.data);
-            }
-          } else {
-            term.write(new Uint8Array(event.data));
-          }
-        };
-
-        ws.onerror = () => {
-          ws.close();
-          useAppStore.getState().releaseSession(tileId);
-          setStatus('disconnected');
-          setErrorMessage('WebSocket connection failed. Verify the API origin, proxy route and key permissions.');
-        };
-
-        ws.onclose = () => {
-          unregisterSocket?.();
-          unregisterSocket = null;
-          useAppStore.getState().releaseSession(tileId);
-          setStatus('disconnected');
-        };
-
-        term.onData((data) => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(new TextEncoder().encode(data));
-          }
-        });
-
-        term.onResize(({ cols, rows }) => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'resize', cols, rows }));
-          }
-        });
+        throw new Error('Electron desktop bridge unavailable');
       } catch (err: unknown) {
         useAppStore.getState().releaseSession(tileId);
         if (isDisposed) return;
@@ -251,11 +193,6 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
     return () => {
       isDisposed = true;
       resizeObserver.disconnect();
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
-      unregisterSocket?.();
       unregisterDesktop?.();
       if (bridge) void bridge.closeTerminal(tileId);
       useAppStore.getState().releaseSession(tileId);

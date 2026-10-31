@@ -3,6 +3,7 @@ import { cryptoVault, VaultLockedError } from '../src/services/cryptoVault';
 import { instaboxClient } from '../src/services/instaboxClient';
 import { useAppStore } from '../src/store/useAppStore';
 import { InstaboxMachine } from '../src/types/instabox';
+import type { DesktopBridge } from '../src/types/desktopBridge';
 
 let firstId: string;
 let secondId: string;
@@ -21,6 +22,7 @@ beforeEach(async () => {
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  delete window.instadeskDesktop;
   cryptoVault.resetVault();
 });
 
@@ -60,12 +62,10 @@ describe('Audit 3 profile lifecycle', () => {
     expect(useAppStore.getState().machines.map((item) => item.id)).toEqual(['latest']);
   });
 
-  it('removes only the deleted profile tiles, reservations and socket', () => {
+  it('removes only the deleted profile tiles, reservations and desktop PTY', () => {
     vi.spyOn(instaboxClient, 'listMachines').mockResolvedValue([]);
-    const firstClose = vi.fn();
-    const secondClose = vi.fn();
-    instaboxClient.registerControlSocket({ close: firstClose } as unknown as WebSocket, firstId);
-    instaboxClient.registerControlSocket({ close: secondClose } as unknown as WebSocket, secondId);
+    const closeProfile = vi.fn().mockResolvedValue(undefined);
+    window.instadeskDesktop = { isDesktop: true, closeProfile } as unknown as DesktopBridge;
     const store = useAppStore.getState();
     store.addTile('first-machine', firstId);
     store.addTile('second-machine', secondId);
@@ -73,8 +73,7 @@ describe('Audit 3 profile lifecycle', () => {
     store.reserveSession(firstTile.tileId, firstId);
     store.reserveSession(secondTile.tileId, secondId);
     store.removeProfile(firstId);
-    expect(firstClose).toHaveBeenCalledOnce();
-    expect(secondClose).not.toHaveBeenCalled();
+    expect(closeProfile).toHaveBeenCalledExactlyOnceWith(firstId);
     expect(useAppStore.getState().tiles.map((tile) => tile.profileId)).toEqual([secondId]);
     expect(Object.values(useAppStore.getState().sessionStates).map((entry) => entry.profileId)).toEqual([secondId]);
     expect(cryptoVault.listProfiles().map((profile) => profile.id)).toEqual([secondId]);
