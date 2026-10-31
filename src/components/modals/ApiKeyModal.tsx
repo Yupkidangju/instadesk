@@ -1,5 +1,5 @@
 // src/components/modals/ApiKeyModal.tsx
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { getTrustedProxyOrigin, instaboxClient, setTrustedProxyOrigin } from '../../services/instaboxClient';
 import {
@@ -38,8 +38,33 @@ export const ApiKeyModal: React.FC = () => {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [customProxyUrl, setCustomProxyUrl] = useState(getTrustedProxyOrigin() ?? '');
   const [proxyTrusted, setProxyTrusted] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; label: string } | null>(null);
 
   const [isValidating, setIsValidating] = useState(false);
+
+  useEffect(() => {
+    if (!isVaultUnlocked) setPendingDelete(null);
+  }, [isVaultUnlocked]);
+
+  const handleClose = () => {
+    setPendingDelete(null);
+    closeApiKeyModal();
+  };
+
+  const confirmDelete = () => {
+    if (!pendingDelete || !profiles.some((profile) => profile.id === pendingDelete.id && profile.label === pendingDelete.label)) {
+      setPendingDelete(null);
+      setErrorMsg('The selected profile changed. Choose it again.');
+      return;
+    }
+    try {
+      removeProfile(pendingDelete.id);
+      setSuccessMsg(`Removed profile ${pendingDelete.label}. This cannot be undone.`);
+      setPendingDelete(null);
+    } catch (error) {
+      setErrorMsg((error as Error).message);
+    }
+  };
 
   if (!isApiKeyModalOpen) return null;
 
@@ -146,7 +171,7 @@ export const ApiKeyModal: React.FC = () => {
             </span>
           </div>
           <button
-            onClick={closeApiKeyModal}
+            onClick={handleClose}
             className="p-1 text-zinc-400 hover:text-white transition-colors"
           >
             <X className="w-4 h-4" />
@@ -329,14 +354,24 @@ export const ApiKeyModal: React.FC = () => {
                     </span>
                   </div>
                   <button
-                    onClick={() => removeProfile(p.id)}
+                    onClick={() => setPendingDelete({ id: p.id, label: p.label })}
                     title="Remove Profile"
+                    disabled={!isVaultUnlocked}
                     className="p-1 text-zinc-500 hover:text-red-400 hover:bg-zinc-900 transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               ))
+            )}
+            {pendingDelete && isVaultUnlocked && (
+              <div role="alertdialog" aria-label="Confirm profile deletion" className="p-3 border border-red-700 bg-red-950/60 space-y-2">
+                <p className="text-red-200">Permanently delete <strong>{pendingDelete.label}</strong> ({pendingDelete.id})? The local encrypted API key cannot be recovered. Its open sessions will close.</p>
+                <div className="flex gap-2 justify-end">
+                  <button type="button" className="neo-btn px-3 py-1" onClick={() => setPendingDelete(null)}>CANCEL</button>
+                  <button type="button" className="neo-btn px-3 py-1 border-red-500 text-red-200" onClick={confirmDelete}>DELETE PROFILE</button>
+                </div>
+              </div>
             )}
           </div>
 
@@ -377,7 +412,7 @@ export const ApiKeyModal: React.FC = () => {
           <span className="text-zinc-500 text-[10px]">
             Local encrypted vault // API keys are sent in plaintext to the selected API origin
           </span>
-          <button onClick={closeApiKeyModal} className="neo-btn px-4 py-1">
+          <button onClick={handleClose} className="neo-btn px-4 py-1">
             CLOSE
           </button>
         </div>

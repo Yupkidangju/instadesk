@@ -130,7 +130,7 @@ export interface ProcessListResponse {
   processes: ProcessItem[];
 }
 
-export type WorkspacePanelType = 'terminal' | 'desktop' | 'exec' | 'logs' | 'processes';
+export type WorkspacePanelType = 'terminal' | 'desktop' | 'split' | 'exec' | 'logs' | 'processes';
 
 export interface WorkspaceTile {
   tileId: string;

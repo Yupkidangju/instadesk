@@ -45,11 +45,12 @@ afterEach(() => {
 describe('PTY retry', () => {
   it('opens a new WebSocket when retry is clicked with the same session name', async () => {
     await cryptoVault.initializeVault('test-password');
+    const profileId = await cryptoVault.addProfile('Test', 'ibk_test');
     vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
     vi.stubGlobal('WebSocket', FakeSocket);
     vi.spyOn(instaboxClient, 'getTerminalWebSocketUrl').mockResolvedValue({ url: 'wss://api.instabox.sh/terminal', protocols: [] });
     render(React.createElement(TerminalView, {
-      tileId: 'tile-retry', machineId: 'm_1', profileId: 'real-profile', sessionName: 'main', onSessionChange: vi.fn(),
+      tileId: 'tile-retry', machineId: 'm_1', profileId, sessionName: 'main', onSessionChange: vi.fn(),
     }));
     await waitFor(() => expect(FakeSocket.instances).toHaveLength(1));
     fireEvent.click(screen.getByTitle('Reconnect Terminal Session'));

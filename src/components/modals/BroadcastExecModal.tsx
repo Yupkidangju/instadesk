@@ -1,7 +1,8 @@
 // src/components/modals/BroadcastExecModal.tsx
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { instaboxClient } from '../../services/instaboxClient';
+import { cryptoVault } from '../../services/cryptoVault';
 import {
   Terminal,
   Play,
@@ -23,16 +24,55 @@ interface NodeExecState {
   result: ExecResult | null;
 }
 
+const targetKey = (profileId: string, machineId: string) => `${profileId}:${machineId}`;
+
 export const BroadcastExecModal: React.FC = () => {
   const { isBroadcastModalOpen, closeBroadcastModal, machines } = useAppStore();
 
   const runningMachines = machines.filter((m) => m.state === 'running');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
-    new Set(runningMachines.map((m) => m.id))
+    new Set(runningMachines.map((m) => targetKey(m.profileId, m.id)))
   );
   const [cmd, setCmd] = useState('uptime && free -h');
   const [nodeStates, setNodeStates] = useState<Record<string, NodeExecState>>({});
   const [isExecuting, setIsExecuting] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+  const runIdRef = useRef(0);
+
+  const resetExecution = () => {
+    runIdRef.current += 1;
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setIsExecuting(false);
+    setNodeStates({});
+    setCmd('');
+    setSelectedIds(new Set());
+  };
+
+  useEffect(() => {
+    const unsubscribe = cryptoVault.subscribe(() => {
+      if (!cryptoVault.isUnlocked()) {
+        resetExecution();
+        useAppStore.getState().closeBroadcastModal();
+      }
+    });
+    return () => { unsubscribe(); };
+  }, []);
+
+  useEffect(() => () => {
+    runIdRef.current += 1;
+    abortRef.current?.abort();
+  }, []);
+
+  useEffect(() => {
+    if (isBroadcastModalOpen) setSelectedIds(new Set(runningMachines.map((machine) => targetKey(machine.profileId, machine.id))));
+    else resetExecution();
+  }, [isBroadcastModalOpen]);
+
+  const handleClose = () => {
+    resetExecution();
+    closeBroadcastModal();
+  };
 
   if (!isBroadcastModalOpen) return null;
 
@@ -44,7 +84,7 @@ export const BroadcastExecModal: React.FC = () => {
   };
 
   const selectAll = () => {
-    setSelectedIds(new Set(runningMachines.map((m) => m.id)));
+    setSelectedIds(new Set(runningMachines.map((m) => targetKey(m.profileId, m.id))));
   };
 
   const deselectAll = () => {
@@ -52,17 +92,21 @@ export const BroadcastExecModal: React.FC = () => {
   };
 
   const handleBroadcast = async () => {
-    if (!cmd.trim() || selectedIds.size === 0 || isExecuting) return;
+    const targets = runningMachines.filter((machine) => selectedIds.has(targetKey(machine.profileId, machine.id)));
+    if (!cmd.trim() || targets.length === 0 || isExecuting) return;
 
     setIsExecuting(true);
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const runId = ++runIdRef.current;
     const initialStates: Record<string, NodeExecState> = {};
 
-    selectedIds.forEach((id) => {
-      const machine = machines.find((m) => m.id === id);
-      initialStates[id] = {
-        machineId: id,
-        name: machine?.name || id,
-        profileId: machine?.profileId || 'demo-default',
+    targets.forEach((machine) => {
+      const key = targetKey(machine.profileId, machine.id);
+      initialStates[key] = {
+        machineId: machine.id,
+        name: machine.name,
+        profileId: machine.profileId,
         isRunning: true,
         output: '',
         result: null,
@@ -71,47 +115,38 @@ export const BroadcastExecModal: React.FC = () => {
 
     setNodeStates(initialStates);
 
-    const promises = Array.from(selectedIds).map(async (id) => {
-      const machine = machines.find((m) => m.id === id);
-      if (!machine) return;
-
+    const promises = targets.map(async (machine) => {
+      const key = targetKey(machine.profileId, machine.id);
       await instaboxClient.streamExec(
         machine.profileId,
         machine.id,
         { cmd: cmd.trim() },
         (stdout) => {
-          setNodeStates((prev) => ({
-            ...prev,
-            [id]: { ...prev[id], output: (prev[id]?.output || '') + stdout },
-          }));
+          setNodeStates((prev) => runIdRef.current === runId && !controller.signal.aborted
+            ? { ...prev, [key]: { ...prev[key], output: (prev[key]?.output || '') + stdout } } : prev);
         },
         (stderr) => {
-          setNodeStates((prev) => ({
-            ...prev,
-            [id]: { ...prev[id], output: (prev[id]?.output || '') + stderr },
-          }));
+          setNodeStates((prev) => runIdRef.current === runId && !controller.signal.aborted
+            ? { ...prev, [key]: { ...prev[key], output: (prev[key]?.output || '') + stderr } } : prev);
         },
         (result) => {
-          setNodeStates((prev) => ({
-            ...prev,
-            [id]: { ...prev[id], isRunning: false, result },
-          }));
+          setNodeStates((prev) => runIdRef.current === runId && !controller.signal.aborted
+            ? { ...prev, [key]: { ...prev[key], isRunning: false, result } } : prev);
         },
         (err) => {
-          setNodeStates((prev) => ({
-            ...prev,
-            [id]: {
-              ...prev[id],
-              isRunning: false,
-              output: (prev[id]?.output || '') + `\n[Error: ${err.message}]`,
-            },
-          }));
-        }
+          setNodeStates((prev) => runIdRef.current === runId && !controller.signal.aborted
+            ? { ...prev, [key]: { ...prev[key], isRunning: false, output: (prev[key]?.output || '') + `\n[Error: ${err.message}]` } }
+            : prev);
+        },
+        controller.signal
       );
     });
 
     await Promise.allSettled(promises);
-    setIsExecuting(false);
+    if (runIdRef.current === runId) {
+      abortRef.current = null;
+      setIsExecuting(false);
+    }
   };
 
   return (
@@ -126,7 +161,7 @@ export const BroadcastExecModal: React.FC = () => {
             </span>
           </div>
           <button
-            onClick={closeBroadcastModal}
+            onClick={handleClose}
             className="p-1 text-zinc-400 hover:text-white transition-colors"
           >
             <X className="w-4 h-4" />
@@ -166,12 +201,13 @@ export const BroadcastExecModal: React.FC = () => {
                 </div>
               ) : (
                 runningMachines.map((m) => {
-                  const isChecked = selectedIds.has(m.id);
+                  const key = targetKey(m.profileId, m.id);
+                  const isChecked = selectedIds.has(key);
                   return (
                     <button
-                      key={m.id}
+                      key={key}
                       type="button"
-                      onClick={() => toggleSelect(m.id)}
+                      onClick={() => toggleSelect(key)}
                       className={`p-2 border text-left flex items-center space-x-2 transition-colors ${
                         isChecked
                           ? 'border-swiss-red bg-swiss-red/10 text-zinc-100'
@@ -222,7 +258,7 @@ export const BroadcastExecModal: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {Object.values(nodeStates).map((node) => (
                   <div
-                    key={node.machineId}
+                    key={targetKey(node.profileId, node.machineId)}
                     className="border border-zinc-800 bg-zinc-950 p-3 space-y-2 flex flex-col h-56"
                   >
                     <div className="flex items-center justify-between border-b border-zinc-800 pb-1.5 flex-shrink-0">
@@ -264,7 +300,7 @@ export const BroadcastExecModal: React.FC = () => {
           <span className="text-zinc-500 text-[10px]">
             Server-Sent Events (SSE) Parallel Runner // Non-Quoted Stream
           </span>
-          <button onClick={closeBroadcastModal} className="neo-btn px-4 py-1">
+          <button onClick={handleClose} className="neo-btn px-4 py-1">
             CLOSE
           </button>
         </div>

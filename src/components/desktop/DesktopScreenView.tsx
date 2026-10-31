@@ -1,7 +1,8 @@
 // src/components/desktop/DesktopScreenView.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { instaboxClient } from '../../services/instaboxClient';
 import { DesktopStatus } from '../../types/instabox';
+import { fitDesktop } from './fitDesktop';
 import {
   Monitor,
   Play,
@@ -35,6 +36,23 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
     width: 1280,
     height: 800,
   });
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const [viewport, setViewport] = useState({ width: 0, height: 0 });
+  const frameWidth = desktopStatus?.width || resolution.width;
+  const frameHeight = desktopStatus?.height || resolution.height;
+  const fitted = fitDesktop(frameWidth, frameHeight, viewport.width, viewport.height);
+
+  useEffect(() => {
+    const element = viewportRef.current;
+    if (!element || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(([entry]) => {
+      setViewport({ width: entry.contentRect.width, height: entry.contentRect.height });
+    });
+    observer.observe(element);
+    const rect = element.getBoundingClientRect();
+    setViewport({ width: rect.width, height: rect.height });
+    return () => observer.disconnect();
+  }, []);
 
   // 데스크톱 상태 및 스트림 URL 로드
   const loadDesktop = async () => {
@@ -102,8 +120,8 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
   return (
     <div className="flex flex-col h-full bg-[#09090b] overflow-hidden select-none">
       {/* 데스크톱 상단 툴바 */}
-      <div className="h-8 bg-zinc-950 border-b border-zinc-800 px-3 flex items-center justify-between text-xs font-mono flex-shrink-0">
-        <div className="flex items-center space-x-2">
+      <div className="min-h-8 bg-zinc-950 border-b border-zinc-800 px-2 py-1 flex flex-wrap items-center justify-between gap-1 text-xs font-mono flex-shrink-0">
+        <div className="flex flex-wrap items-center gap-1 min-w-0">
           {desktopStatus?.running ? (
             <span className="flex items-center text-emerald-400 space-x-1">
               <Monitor className="w-3.5 h-3.5" />
@@ -144,7 +162,7 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
 
           {/* 해상도 정보 */}
           <span className="hidden sm:inline text-zinc-500 text-[10px]">
-            {resolution.width}x{resolution.height}
+            {frameWidth}x{frameHeight}
           </span>
         </div>
 
@@ -182,7 +200,7 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
       )}
 
       {/* 데스크톱 화면 뷰포트 */}
-      <div className="flex-1 relative w-full h-full bg-[#050507] flex items-center justify-center overflow-hidden">
+      <div ref={viewportRef} className="flex-1 min-h-0 relative w-full bg-[#050507] flex items-center justify-center overflow-hidden">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center space-y-2 text-zinc-500 font-mono text-xs">
             <Loader2 className="w-6 h-6 animate-spin text-swiss-red" />
@@ -242,14 +260,15 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
             </button>
           </div>
         ) : streamUrl ? (
-          /* 데스크톱 Iframe 렌더러 */
-          profileId.startsWith('demo-') ? (
+          <div data-desktop-scale={fitted.scale.toFixed(3)} className="relative shrink-0 overflow-hidden border border-zinc-700"
+            style={{ width: fitted.width, height: fitted.height }}>
+          {profileId.startsWith('demo-') ? (
             /* 데모 모드 시뮬레이션 그래픽 뷰어 */
-            <div className="w-full h-full p-4 flex flex-col items-center justify-center bg-zinc-950 font-mono text-xs text-zinc-300 space-y-4">
-              <div className="w-[85%] aspect-video border border-zinc-700 bg-zinc-900 shadow-2xl flex flex-col relative overflow-hidden">
+            <div className="w-full h-full p-2 flex flex-col items-center justify-center bg-zinc-950 font-mono text-xs text-zinc-300">
+              <div className="w-full h-full border border-zinc-700 bg-zinc-900 flex flex-col relative overflow-hidden">
                 {/* 가상 윈도우 타이틀바 */}
                 <div className="h-6 bg-zinc-800 px-3 flex items-center justify-between border-b border-zinc-700">
-                  <span className="font-bold text-[11px] text-zinc-300">
+                  <span className="font-bold text-[11px] text-zinc-300 truncate">
                     InstaBox XFCE Desktop [Chromium + VNC Live Stream Simulator]
                   </span>
                   <div className="flex space-x-1.5">
@@ -259,11 +278,11 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
                   </div>
                 </div>
                 {/* 가상 브라우저 화면 */}
-                <div className="flex-1 bg-[#121214] p-6 flex flex-col items-center justify-center text-center space-y-3">
-                  <div className="w-10 h-10 border border-zinc-700 bg-zinc-800 flex items-center justify-center text-swiss-red">
-                    <Monitor className="w-5 h-5" />
+                <div className="flex-1 min-h-0 bg-[#121214] p-2 flex flex-col items-center justify-center text-center gap-1 sm:gap-2">
+                  <div className="w-7 h-7 border border-zinc-700 bg-zinc-800 flex items-center justify-center text-swiss-red">
+                    <Monitor className="w-4 h-4" />
                   </div>
-                  <div className="font-bold text-zinc-100 text-sm">
+                  <div className="font-bold text-zinc-100 text-xs">
                     GUI DESKTOP STREAM ACTIVE
                   </div>
                   <p className="text-zinc-500 max-w-sm text-[11px]">
@@ -276,13 +295,18 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
               </div>
             </div>
           ) : (
-            <iframe
+            <div style={{ width: frameWidth, height: frameHeight, transform: `scale(${fitted.scale})`, transformOrigin: 'top left' }}>
+              <iframe
               src={streamUrl}
               title={`Desktop Stream ${machineId}`}
-              className="w-full h-full border-0"
+              style={{ width: frameWidth, height: frameHeight }}
+              className="border-0"
               allow="clipboard-read; clipboard-write; fullscreen; autoplay"
-            />
+              />
+            </div>
           )
+            }
+          </div>
         ) : (
           <div className="text-center p-6 space-y-2 font-mono text-xs text-zinc-500">
             <AlertTriangle className="w-6 h-6 mx-auto text-amber-500" />

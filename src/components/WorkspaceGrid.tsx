@@ -9,24 +9,25 @@ export const WorkspaceGrid: React.FC = () => {
   const [focusedTileId, setFocusedTileId] = useState<string | null>(null);
 
   const getGridClasses = () => {
+    if (tiles.length === 1) return 'grid-cols-1';
     switch (gridMode) {
       case '1x1':
         return 'grid-cols-1 grid-rows-1';
       case '2x1':
-        return 'grid-cols-1 md:grid-cols-2 grid-rows-1';
+        return 'grid-cols-1 xl:grid-cols-2';
       case '2x2':
-        return 'grid-cols-1 md:grid-cols-2 grid-rows-2';
+        return 'grid-cols-1 xl:grid-cols-2';
       case 'auto':
       default:
         if (tiles.length <= 1) return 'grid-cols-1 grid-rows-1';
-        if (tiles.length === 2) return 'grid-cols-1 md:grid-cols-2 grid-rows-1';
-        return 'grid-cols-1 md:grid-cols-2 grid-rows-2';
+        if (tiles.length === 2) return 'grid-cols-1 xl:grid-cols-2';
+        return 'grid-cols-1 xl:grid-cols-2';
     }
   };
 
   if (tiles.length === 0) {
     return (
-      <div className="flex-1 h-full flex flex-col items-center justify-center p-8 bg-[#09090b] text-center font-mono select-none">
+      <div className="flex-1 min-w-0 h-full flex flex-col items-center justify-center p-4 sm:p-8 overflow-y-auto bg-[#09090b] text-center font-mono select-none">
         <div className="max-w-lg w-full p-8 border border-zinc-800 bg-zinc-950 space-y-5 shadow-2xl">
           <div className="w-14 h-14 border border-zinc-700 bg-zinc-900 text-swiss-red flex items-center justify-center mx-auto shadow-inner">
             <LayoutGrid className="w-7 h-7" />
@@ -42,7 +43,7 @@ export const WorkspaceGrid: React.FC = () => {
             <p className="text-xs text-zinc-400 leading-relaxed max-w-sm mx-auto">
               {machines.length === 0
                 ? 'Register your real instabox.sh API key (ibk_...) to discover your microVMs, or activate simulation demo mode.'
-                : 'Choose a node from the left inventory to open real-time PTY terminal and 60fps live desktop stream.'}
+                : 'Choose a node from the inventory to open a PTY terminal or desktop viewer.'}
             </p>
           </div>
 
@@ -71,7 +72,7 @@ export const WorkspaceGrid: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {machines.slice(0, 4).map((m) => (
                   <button
-                    key={m.id}
+                    key={`${m.profileId}:${m.id}`}
                     onClick={() => addTile(m.id, m.profileId, 'terminal')}
                     className="p-2 border border-zinc-800 bg-zinc-900 hover:border-zinc-600 text-left transition-colors flex items-center justify-between"
                   >
@@ -94,7 +95,7 @@ export const WorkspaceGrid: React.FC = () => {
   const displayTiles = gridMode === '1x1' ? [focusedTile] : tiles;
 
   return (
-    <main className="flex-1 h-full w-full bg-[#09090b] p-2 overflow-hidden flex flex-col">
+    <main className="flex-1 min-w-0 min-h-0 w-full bg-[#09090b] p-2 overflow-y-auto flex flex-col">
       {gridMode === '1x1' && tiles.length > 1 && (
         <nav aria-label="Focused workspace" className="flex gap-1 mb-2 overflow-x-auto">
           {tiles.map((tile) => (
@@ -105,7 +106,7 @@ export const WorkspaceGrid: React.FC = () => {
           ))}
         </nav>
       )}
-      <div className={`grid ${getGridClasses()} gap-2 flex-1 w-full h-full overflow-hidden`}>
+      <div className={`grid ${getGridClasses()} gap-2 flex-1 w-full ${displayTiles.length === 1 ? 'min-h-0 grid-rows-1' : 'auto-rows-[minmax(320px,1fr)]'}`}>
         {displayTiles.map((tile) => (
           <VmTilePane key={tile.tileId} tile={tile} index={tiles.indexOf(tile)} />
         ))}

@@ -98,7 +98,7 @@ export const ExecRunnerView: React.FC<ExecRunnerViewProps> = ({ machineId, profi
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleRun()}
             placeholder="ENTER COMMAND (e.g., git status, docker ps)..."
             disabled={isRunning}
-            className="flex-1 bg-zinc-900 border border-zinc-800 px-2.5 py-1 text-xs text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-zinc-500 disabled:opacity-50"
+            className="flex-1 min-w-0 bg-zinc-900 border border-zinc-800 px-2.5 py-1 text-xs text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-zinc-500 disabled:opacity-50"
           />
           {isRunning ? (
             <button

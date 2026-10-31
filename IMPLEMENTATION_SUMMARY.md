@@ -43,11 +43,13 @@ D:/web/instadesk/
 │       ├── SidebarVmList.tsx        # 노드 인벤토리 사이드바 및 필터/전원 제어
 │       ├── WorkspaceGrid.tsx        # 멀티 타일 분할 그리드 컨테이너
 │       ├── VmTilePane.tsx           # 개별 타일 헤더 및 탭 스위처
+│       ├── SplitWorkspaceView.tsx   # 터미널/데스크톱 조절 구분선
 │       ├── terminal/
 │       │   ├── TerminalView.tsx     # xterm.js PTY WebSocket 인터랙티브 셸
 │       │   └── ExecRunnerView.tsx   # SSE 스트리밍 명령 실행 뷰
 │       ├── desktop/
 │       │   ├── DesktopScreenView.tsx # Stream Iframe 뷰어 및 Takeover/Handback 제어
+│       │   └── fitDesktop.ts        # 화면비 유지 맞춤 계산
 │       ├── telemetry/
 │       │   ├── MetricsLogsView.tsx  # 시리얼 콘솔 로그 및 30초 메트릭 뷰
 │       │   └── ProcessListView.tsx  # ps -e 프로세스 테이블
@@ -59,6 +61,9 @@ D:/web/instadesk/
 └── test/
     ├── cryptoVault.test.ts          # 로컬 암호화/복호화 및 패스워드 검증 테스트
     ├── instaboxClient.test.ts       # API 클라이언트 및 SSE 파서 단위 테스트
+    ├── audit3Store.test.ts          # 부분 동기화·프로필 삭제 회귀
+    ├── audit3Ui.test.tsx            # Broadcast 잠금·삭제 확인 회귀
+    ├── splitWorkspace.test.tsx      # 구분선·화면비 계산 회귀
     └── useAppStore.test.ts          # 스토어 상태 전이 및 쿼터 계산 테스트
 ```
 
@@ -70,10 +75,18 @@ D:/web/instadesk/
 |---|---|---|
 | **Crypto Vault** | `src/services/cryptoVault.ts` | 마스터 비밀번호 PBKDF2(100,000 iterations) 키 파생, AES-256-GCM 암호화/복호화, `localStorage` 안전 저장, `withDecryptedKey`를 통한 소비 시점 복호화 보장 |
 | **InstaBox Client** | `src/services/instaboxClient.ts` | `https://api.instabox.sh` REST API 통신, `Idempotency-Key` 및 `X-Confirm-Delete` 자동 주입, `POST /v1/machines/{id}/exec` SSE 스트림 처리, `desktop/stream` Iframe URL 획득, 시뮬레이션 Mock 모드 |
-| **App Store** | `src/store/useAppStore.ts` | 키 볼트(잠금/해제), 워크스페이스 타일 목록, 머신 목록 자동 폴링(10초 주기), 활성 WebSocket 연결 세션 수(최대 8개) 감시 |
+| **App Store** | `src/store/useAppStore.ts` | 볼트·타일, 프로필별 부분 갱신과 최신 세대 적용, 프로필별 PTY 예약 최대 8개 감시 |
 | **Terminal View** | `src/components/terminal/TerminalView.tsx` | `@xterm/xterm` 초기화, WebSocket 연결 및 binary/JSON 프레임 송수신, 리사이즈 이벤트 동기화 |
 | **Desktop View** | `src/components/desktop/DesktopScreenView.tsx` | `POST /v1/machines/{id}/desktop/stream` 서명 링크 생성, `iframe` 임베딩, `viewOnly: false` + `takeover` 제어권 획득 |
 | **API 연결 경계** | `src/services/instaboxClient.ts` | 서비스의 CORS 허용 또는 사용자가 신뢰하는 HTTPS 프록시 필요; 확장 프로그램 규칙 비활성 |
+| **Split View** | `src/components/SplitWorkspaceView.tsx`, `src/components/desktop/fitDesktop.ts` | PTY와 Desktop 동시 배치, 포인터/키보드 비율 조절, iframe 화면비 맞춤 |
+
+## Audit 3 수정 상태 (2026-11-01)
+
+- 저장소 스키마를 실제 `src/types/vault.ts`와 일치시켰다. 390px 이상 반응형 화면은 1024px 미만 노드 서랍, 1280px 미만 여러 타일 세로 배치, 단일 타일 전폭을 사용한다.
+- 프로필별 네트워크 중단과 부분 머신 갱신, 중복 갱신 세대 처리, 삭제 대상 확인, 잠금 시 Broadcast 초기화를 추가했다. 서로 다른 프로필의 동일 머신 ID는 Broadcast에서 복합키로 식별한다.
+- 개발 루프백과 신뢰 프록시의 API/Connect 경로를 분리했다. 허가된 실제 프록시·WebSocket 핸드셰이크는 미검증이다.
+- SPLIT 뷰의 조절 구분선과 Desktop 화면비 맞춤을 추가했다. 사용한 회귀·브라우저 증거와 잔여 HOLD 조건은 `docs/audit/remediation_results_3.md`에 기록한다.
 
 ## Audit 1 수정 상태 (2026-11-01)
 

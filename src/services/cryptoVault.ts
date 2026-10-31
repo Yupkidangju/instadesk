@@ -234,6 +234,7 @@ class CryptoVaultManager {
    * 프로필 삭제
    */
   public removeProfile(id: string): void {
+    if (!this.masterKey) throw new VaultLockedError();
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return;
     const vaultData: LocalVaultStorage = JSON.parse(raw);

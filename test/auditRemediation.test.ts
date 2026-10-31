@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cryptoVault } from '../src/services/cryptoVault';
-import { getApiBaseUrl, instaboxClient, setTrustedProxyOrigin } from '../src/services/instaboxClient';
+import { getApiBaseUrl, instaboxClient, isLocalDevOrigin, setTrustedProxyOrigin } from '../src/services/instaboxClient';
 import { useAppStore } from '../src/store/useAppStore';
 
 let profileId: string;
@@ -80,14 +80,36 @@ describe('Audit 1 network and session regressions', () => {
     expect(() => setTrustedProxyOrigin('https://user:pass@proxy.example')).toThrow();
     expect(() => setTrustedProxyOrigin('https://proxy.example/path')).toThrow();
     setTrustedProxyOrigin('https://proxy.example');
-    expect(getApiBaseUrl()).toBe('https://proxy.example');
+    expect(getApiBaseUrl()).toBe('https://proxy.example/instabox-api');
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
       url: 'wss://connect.instabox.sh/v1/terminal?ticket=abc', token: 'abc', protocol: 'instabox-terminal.v1',
     }), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
     const ticket = await instaboxClient.getTerminalWebSocketUrl(profileId, 'm_1');
-    expect(fetchMock.mock.calls[0][0]).toBe('https://proxy.example/v1/machines/m_1/access');
-    expect(ticket.url).toBe('wss://proxy.example/v1/terminal?ticket=abc');
+    expect(fetchMock.mock.calls[0][0]).toBe('https://proxy.example/instabox-api/v1/machines/m_1/access');
+    expect(ticket.url).toBe('wss://proxy.example/instabox-connect/v1/terminal?ticket=abc');
+  });
+
+  it('selects the development proxy for both loopback hostnames', () => {
+    expect(isLocalDevOrigin('127.0.0.1', '5173')).toBe(true);
+    expect(isLocalDevOrigin('localhost', '5173')).toBe(true);
+    expect(isLocalDevOrigin('127.0.0.1', '4173')).toBe(false);
+  });
+
+  it('routes an API-host PTY ticket through the API WebSocket prefix and rejects unknown hosts', async () => {
+    setTrustedProxyOrigin('https://proxy.example');
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        url: 'wss://api.instabox.sh/v1/terminal?ticket=ok', token: 'ok',
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        url: 'wss://unexpected.example/v1/terminal', token: 'bad',
+      }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    expect((await instaboxClient.getTerminalWebSocketUrl(profileId, 'm_1')).url)
+      .toBe('wss://proxy.example/instabox-api/v1/terminal?ticket=ok');
+    await expect(instaboxClient.getTerminalWebSocketUrl(profileId, 'm_1'))
+      .rejects.toThrow('unexpected WebSocket destination');
   });
 
   it('counts connection reservations, frees closed sessions, and clears real tiles on lock', () => {
@@ -107,7 +129,7 @@ describe('Audit 1 network and session regressions', () => {
 
   it('closes registered PTY sockets and aborts in-flight fetches when locked', async () => {
     const close = vi.fn();
-    instaboxClient.registerControlSocket({ close } as unknown as WebSocket);
+    instaboxClient.registerControlSocket({ close } as unknown as WebSocket, profileId);
     const aborted: boolean[] = [];
     vi.stubGlobal('fetch', vi.fn((_url: string, init: RequestInit) => new Promise((_resolve, reject) => {
       init.signal?.addEventListener('abort', () => {
@@ -128,7 +150,7 @@ describe('Audit 1 network and session regressions', () => {
     await cryptoVault.initializeVault('test-password', 0.001);
     const id = await cryptoVault.addProfile('Timed', 'ibk_test');
     const close = vi.fn();
-    instaboxClient.registerControlSocket({ close } as unknown as WebSocket);
+    instaboxClient.registerControlSocket({ close } as unknown as WebSocket, id);
     useAppStore.getState().addTile('m_1', id, 'terminal');
     await vi.waitFor(() => expect(cryptoVault.isUnlocked()).toBe(false));
     expect(close).toHaveBeenCalledOnce();

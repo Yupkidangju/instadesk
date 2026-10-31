@@ -50,30 +50,26 @@
 
 ### 3.2 저장소 스키마 (`localStorage`)
 ```typescript
-export interface EncryptedVaultPayload {
-  version: 1;
-  salt: string;        // Base64 encoded (16 bytes)
-  iv: string;          // Base64 encoded (12 bytes)
-  ciphertext: string;  // Base64 encoded ciphertext + auth tag
-  keyHint?: string;    // 마스터 비밀번호 힌트 (선택)
-}
-
 export interface EncryptedProfileRecord {
   id: string;          // UUID
   label: string;       // e.g. "01_PROD_WORKSPACE"
-  encryptedKey: string; // Base64(salt:iv:ciphertext)
+  encryptedData: string; // Base64(iv):Base64(ciphertext + auth tag)
+  keyHint?: string;
   createdAt: string;
   lastUsedAt: string | null;
 }
 
 export interface LocalVaultStorage {
   version: 1;
-  verifier: string;    // 마스터 비밀번호 검증용 암호화된 토큰
-  salt: string;        // 마스터 KDF salt
+  salt: string;        // 마스터 KDF salt (Base64)
+  verifierCiphertext: string; // 암호화된 검증 토큰 (Base64)
+  verifierIv: string;  // 검증 토큰 IV (Base64)
   profiles: EncryptedProfileRecord[];
   autoLockMinutes: number; // default: 15
 }
 ```
+
+볼트는 브라우저 origin 단위의 localStorage를 사용한다. 동일 origin의 다른 경로에서 실행되는 스크립트도 저장소에 접근할 수 있으므로, `/instadesk/` 경로만으로 격리된다고 간주하지 않는다.
 
 ### 3.3 On-demand 소비 수명주기 (Decryption-on-Consumption)
 1. **평문 상시 보관 금지**: 스토어(State)에는 마스터 비밀번호나 평문 API 키 배열을 유지하지 않고, 파생된 `CryptoKey` 객체(또는 세션 런타임 언락 메모리 캐시)만 일시 보관.
@@ -86,6 +82,10 @@ export interface LocalVaultStorage {
    ```
    API 호출이 필요할 때만 복호화된 키를 콜백에 전달하고, 콜백 완료 후 스코프를 벗어나면 메모리에서 즉시 해제.
 3. **잠금 상태 처리**: 볼트가 잠겨 있을 때 소비 함수 호출 시 `VaultLockedError`를 던지며 네오스위스 스타일의 마스터 패스워드 입력 모달을 트리거.
+
+### 3.4 잠금과 프로필 삭제
+- 수동/자동 잠금은 앱이 소유한 실 프로필 요청·PTY·데스크톱 타일과 Broadcast 실행을 중단하고 해당 명령·출력을 지운다. 이후 잠금 해제 전 재연결하지 않는다.
+- 프로필 삭제는 볼트 잠금 해제와 대상 이름·ID 확인을 요구한다. 로컬 암호화 키 기록의 삭제는 복구할 수 없다. 대상 프로필의 요청·PTY·데스크톱·명령 출력은 앱에서 닫되 다른 프로필의 연결은 유지한다. 서버 티켓과 이미 연 외부 탭의 원격 취소는 보장하지 않는다.
 
 ---
 
@@ -109,6 +109,11 @@ export interface LocalVaultStorage {
     - Stopped: `#71717A` (Zinc 500)
     - Error/Quota: `#EF4444` (Signal Red)
 
+### 4.2 지원 화면과 분할 뷰
+- 최소 지원 폭: 390 CSS px. 1024px 미만에서는 노드 목록을 열고 닫는 서랍을 사용한다. 1280px 미만에서는 여러 타일을 세로로 쌓고 스크롤한다. 단일 타일은 그리드 설정과 관계없이 작업 영역 전폭을 쓴다.
+- 한 VM의 `SPLIT` 탭은 PTY 터미널과 Desktop 뷰어를 동시에 마운트한다. 타일의 가용 폭이 700px 이상이면 구분선을 좌우로 25~75% 범위에서 드래그·키보드 조절한다. 더 좁은 타일은 상하 배치한다.
+- Desktop 뷰어는 서버가 보고한 화면 크기 또는 선택한 기본 해상도를 논리 크기로 사용하고, 가용 영역의 너비·높이에 맞춰 원본 화면비를 유지하며 확대/축소한다. 외부 iframe 내부 렌더링 정책은 실 서비스에서 별도 검증한다.
+
 ---
 
 ## 5. API 계약 및 기능 규격 (API Contracts)
@@ -131,6 +136,11 @@ export interface LocalVaultStorage {
 ### 5.2 동시 세션 쿼터 제어
 - `instabox.sh` 정책상 계정당 최대 8개의 동시 터미널/데스크톱 WebSocket 세션 허용 (`429 quota_exceeded`).
 - 클라이언트는 앱이 소유한 실제 PTY WebSocket의 연결 시도 및 열린 연결을 프로필별로 예약/계수한다. 타일, 비연결 탭, 숨겨진 타일은 세션이 아니다. 한 프로필에서 8개 예약/연결 중에는 새 PTY 연결을 차단한다. 헤더는 전체 연결 수와 프로필별 최대치를 표시한다. 데스크톱 iframe과 외부 탭의 서버측 세션 수는 브라우저에서 신뢰성 있게 알 수 없으므로 이 게이지에 포함하지 않으며 서버 429 응답도 처리한다.
+
+### 5.3 여러 프로필의 머신 동기화
+- 프로필별 조회 성공과 실패를 분리한다. 정상 응답한 프로필과 활성 데모의 최신 머신만 합쳐 표시하고, 실패한 프로필의 오래된 머신은 남기지 않는다. 실패는 프로필 이름과 함께 표시한다.
+- 겹쳐 실행된 새로고침 중 먼저 시작한 요청의 늦은 결과는 나중에 시작한 요청의 상태를 덮지 않는다. 잠금·프로필 삭제도 이전 결과를 무효화한다.
+- Broadcast 대상은 `(profileId, machineId)` 쌍으로 식별한다. 다른 프로필에서 같은 머신 ID가 나와도 서로 다른 대상과 출력으로 처리한다.
 
 ---
 

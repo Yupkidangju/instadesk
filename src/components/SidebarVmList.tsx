@@ -14,7 +14,12 @@ import {
 } from 'lucide-react';
 import { InstaboxMachine, MachineState } from '../types/instabox';
 
-export const SidebarVmList: React.FC = () => {
+interface SidebarVmListProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export const SidebarVmList: React.FC<SidebarVmListProps> = ({ isOpen, onClose }) => {
   const {
     machines,
     searchQuery,
@@ -24,6 +29,7 @@ export const SidebarVmList: React.FC = () => {
     profileFilter,
     setProfileFilter,
     profiles,
+    profileErrors,
     addTile,
     controlMachine,
     deleteMachine,
@@ -101,7 +107,7 @@ export const SidebarVmList: React.FC = () => {
   };
 
   return (
-    <aside className="w-80 flex-shrink-0 bg-zinc-950/90 border-r border-zinc-800 flex flex-col h-full overflow-hidden select-none">
+    <aside id="node-inventory" className={`${isOpen ? 'flex' : 'hidden'} absolute inset-y-0 left-0 z-30 w-[min(20rem,calc(100vw-2rem))] lg:static lg:flex lg:w-72 flex-shrink-0 bg-zinc-950 border-r border-zinc-800 flex-col h-full overflow-hidden select-none`}>
       {/* 1. 사이드바 헤더 및 인덱스 */}
       <div className="p-3 border-b border-zinc-800 space-y-2">
         <div className="flex items-center justify-between">
@@ -113,7 +119,16 @@ export const SidebarVmList: React.FC = () => {
           <span className="neo-tag text-zinc-400">
             {filteredMachines.length} / {machines.length}
           </span>
+          <button type="button" onClick={onClose} className="neo-btn lg:hidden px-2 py-1" aria-label="Close node inventory">CLOSE</button>
         </div>
+
+        {Object.entries(profileErrors).length > 0 && (
+          <div role="status" className="border border-amber-800 bg-amber-950/50 p-2 text-[11px] text-amber-200">
+            {Object.entries(profileErrors).map(([id, error]) => (
+              <p key={id}>{profiles.find((profile) => profile.id === id)?.label ?? id}: {error}</p>
+            ))}
+          </div>
+        )}
 
         {/* 검색창 */}
         <div className="relative">
@@ -180,7 +195,7 @@ export const SidebarVmList: React.FC = () => {
             return (
               <div
                 key={`${m.profileId}-${m.id}`}
-                onClick={() => addTile(m.id, m.profileId, 'terminal')}
+                onClick={() => { addTile(m.id, m.profileId, 'terminal'); onClose(); }}
                 className="group border border-zinc-800 bg-zinc-950 p-2.5 hover:border-zinc-600 transition-all cursor-pointer relative"
               >
                 {/* 상단 라인: 상태 & 프로필 라벨 */}
@@ -217,6 +232,7 @@ export const SidebarVmList: React.FC = () => {
                       onClick={(e) => {
                         e.stopPropagation();
                         addTile(m.id, m.profileId, 'terminal');
+                        onClose();
                       }}
                       title="Open Terminal Pane"
                       className="neo-btn px-2 py-0.5 text-[10px] hover:text-white"
@@ -228,6 +244,7 @@ export const SidebarVmList: React.FC = () => {
                       onClick={(e) => {
                         e.stopPropagation();
                         addTile(m.id, m.profileId, 'desktop');
+                        onClose();
                       }}
                       title="Open Desktop Screen Stream"
                       className="neo-btn px-2 py-0.5 text-[10px] hover:text-white"

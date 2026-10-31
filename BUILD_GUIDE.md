@@ -25,8 +25,7 @@ npm ci
 # 3. 개발 서버 실행 (Vite 로컬 CORS 프록시 자동 가동)
 npm run dev
 ```
-개발 서버가 구동되면 기본적으로 `http://localhost:5173`에서 실행됩니다.
-Vite 프록시는 `http://localhost:5173/instabox-api/*` 요청을 `https://api.instabox.sh/*`로 전달하고 대시보드 Origin 헤더를 설정합니다. 이는 개발 편의 경로이며 실제 인증/PTY/Desktop 호환성은 허가된 키로 별도 확인해야 합니다.
+개발 서버는 `http://127.0.0.1:5173/instadesk/`를 표시합니다. `localhost:5173`에서도 앱을 열면 같은 `/instabox-api/*` 및 `/instabox-connect/*` 개발 프록시를 선택합니다. 이는 개발 편의 경로이며 실제 인증/PTY/Desktop 호환성은 허가된 키로 별도 확인해야 합니다.
 
 ---
 
@@ -47,7 +46,7 @@ GitHub Pages는 저장소의 Pages 설정에서 GitHub Actions를 소스로 선�
 
 ## 4. 실제 API 연결 조건
 
-현재 `extension/`의 전역 헤더 변조 규칙은 보안상 비활성화했습니다. 설치해도 API 연결 기능을 제공하지 않습니다. 실제 연결에는 upstream Origin 허용 또는 신뢰하는 HTTPS 프록시가 필요합니다. 프록시는 REST, SSE 및 서비스가 발급하는 WebSocket 경로를 지원해야 합니다.
+현재 `extension/`의 전역 헤더 변조 규칙은 보안상 비활성화했습니다. 설치해도 API 연결 기능을 제공하지 않습니다. 실제 연결에는 upstream Origin 허용 또는 신뢰하는 HTTPS 프록시가 필요합니다. 프록시는 `/instabox-api/*`를 `https://api.instabox.sh/*`로, `/instabox-connect/*`를 `https://connect.instabox.sh/*`로 중계하고 두 경로의 WebSocket 업그레이드를 지원해야 합니다. 운영 프록시의 실 동작은 아직 검증되지 않았습니다.
 
 최종 Pages URL에서 허가된 테스트 키로 REST GET/변경, SSE, PTY WebSocket, Desktop 및 잠금/재연결을 별도로 검증해야 합니다. 외부 탭에서 연 Desktop은 앱에서 원격으로 취소할 수 없습니다.
 

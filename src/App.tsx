@@ -1,5 +1,5 @@
 // src/App.tsx
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAppStore } from './store/useAppStore';
 import { HeaderBar } from './components/HeaderBar';
 import { SidebarVmList } from './components/SidebarVmList';
@@ -10,6 +10,7 @@ import { BroadcastExecModal } from './components/modals/BroadcastExecModal';
 import { CreateVmModal } from './components/modals/CreateVmModal';
 
 export const App: React.FC = () => {
+  const [isSidebarOpen, setSidebarOpen] = useState(false);
   const {
     refreshMachines,
     autoRefreshInterval,
@@ -24,24 +25,34 @@ export const App: React.FC = () => {
   useEffect(() => {
     if (autoRefreshInterval <= 0) return;
     const timer = setInterval(() => {
-      refreshMachines();
+      if (!useAppStore.getState().isLoadingMachines) void refreshMachines();
     }, autoRefreshInterval * 1000);
     return () => clearInterval(timer);
   }, [autoRefreshInterval]);
 
+  useEffect(() => {
+    if (!isSidebarOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSidebarOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isSidebarOpen]);
+
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#09090b] text-zinc-100 font-sans">
+    <div className="flex flex-col h-dvh w-full overflow-hidden bg-[#09090b] text-zinc-100 font-sans">
       {/* 1. 상단 시스템 네비게이션 헤더 */}
-      <HeaderBar />
+      <HeaderBar sidebarOpen={isSidebarOpen} onToggleSidebar={() => setSidebarOpen((open) => !open)} />
 
       {/* 2. 메인 워크스페이스 본문 (좌: 노드 인벤토리 사이드바, 우: 멀티 타일 분할 그리드) */}
-      <div className="flex-1 flex w-full h-[calc(100vh-56px-24px)] overflow-hidden">
-        <SidebarVmList />
+      <div className="relative flex-1 min-h-0 flex w-full overflow-hidden">
+        {isSidebarOpen && <button type="button" aria-label="Close node inventory" className="absolute inset-0 z-20 bg-black/70 lg:hidden" onClick={() => setSidebarOpen(false)} />}
+        <SidebarVmList isOpen={isSidebarOpen} onClose={() => setSidebarOpen(false)} />
         <WorkspaceGrid />
       </div>
 
       {/* 3. 네오스위스 하단 상태 표시줄 (시스템 푸터) */}
-      <footer className="h-6 bg-zinc-950 border-t border-zinc-800 px-3 flex items-center justify-between text-[10px] font-mono select-none flex-shrink-0 text-zinc-500">
+      <footer className="hidden lg:flex min-h-6 bg-zinc-950 border-t border-zinc-800 px-3 items-center justify-between text-[10px] font-mono select-none flex-shrink-0 text-zinc-500">
         <div className="flex items-center space-x-3">
           <span className="flex items-center space-x-1 text-emerald-400">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />

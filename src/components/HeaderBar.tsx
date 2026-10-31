@@ -12,10 +12,16 @@ import {
   Key,
   Radio,
   Lock,
+  Menu,
 } from 'lucide-react';
 import { GridMode } from '../types/instabox';
 
-export const HeaderBar: React.FC = () => {
+interface HeaderBarProps {
+  sidebarOpen: boolean;
+  onToggleSidebar: () => void;
+}
+
+export const HeaderBar: React.FC<HeaderBarProps> = ({ sidebarOpen, onToggleSidebar }) => {
   const {
     isVaultInitialized,
     isVaultUnlocked,
@@ -25,6 +31,7 @@ export const HeaderBar: React.FC = () => {
     setGridMode,
     refreshMachines,
     isLoadingMachines,
+    syncError,
     lastSyncedAt,
     autoRefreshInterval,
     setAutoRefreshInterval,
@@ -47,9 +54,9 @@ export const HeaderBar: React.FC = () => {
   const gridModes: GridMode[] = ['1x1', '2x1', '2x2', 'auto'];
 
   return (
-    <header className="h-14 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between px-4 select-none flex-shrink-0 z-20">
+    <header className="min-h-14 bg-zinc-950 border-b border-zinc-800 flex flex-wrap items-center justify-between gap-2 px-3 py-2 select-none flex-shrink-0 z-20">
       {/* 1. 로고 & 시스템 인덱스 */}
-      <div className="flex items-center space-x-3">
+      <div className="flex w-full lg:w-auto items-center justify-between gap-3">
         <div className="flex items-center space-x-1.5">
           <div className="w-4 h-4 bg-swiss-red flex items-center justify-center font-mono font-black text-[10px] text-white">
             +
@@ -69,10 +76,13 @@ export const HeaderBar: React.FC = () => {
             SWISS_REST_WS_V1
           </span>
         </div>
+        <button type="button" onClick={onToggleSidebar} aria-expanded={sidebarOpen} aria-controls="node-inventory" className="neo-btn lg:hidden gap-1" title="Toggle node inventory">
+          <Menu className="w-4 h-4" /> NODES
+        </button>
       </div>
 
       {/* 2. 세션 쿼터와 로컬 볼트 상태 */}
-      <div className="flex items-center space-x-4">
+      <div className="flex flex-wrap items-center gap-2 min-w-0">
         {/* 세션 쿼터 게이지 */}
         <div className="hidden lg:flex items-center space-x-2 font-mono text-xs px-2.5 py-1 border border-zinc-800 bg-zinc-900/80">
           <Radio className={`w-3.5 h-3.5 ${isAtQuota ? 'text-red-500 animate-pulse' : isNearQuota ? 'text-amber-400' : 'text-emerald-400'}`} />
@@ -142,6 +152,11 @@ export const HeaderBar: React.FC = () => {
             <option value={0} className="bg-zinc-900 text-zinc-100">OFF</option>
           </select>
         </div>
+        {syncError && <button type="button" role="status" title={syncError}
+          onClick={() => { if (!sidebarOpen) onToggleSidebar(); }}
+          className="border border-amber-800 bg-amber-950/50 px-2 py-1 font-mono text-[10px] text-amber-200">
+          SYNC ISSUE · VIEW NODES
+        </button>}
 
         {/* 그리드 모드 전환기 */}
         <div className="hidden sm:flex items-center border border-zinc-800 bg-zinc-900 p-0.5">
@@ -163,14 +178,14 @@ export const HeaderBar: React.FC = () => {
       </div>
 
       {/* 3. 우측 액션 버튼들 */}
-      <div className="flex items-center space-x-2">
+      <div className="flex flex-wrap items-center gap-2">
         <button
           onClick={openBroadcastModal}
           className="neo-btn flex items-center space-x-1.5 text-zinc-300 hover:text-white"
           title="Broadcast command to multiple running VMs"
         >
           <Terminal className="w-3.5 h-3.5 text-swiss-red" />
-          <span className="hidden xl:inline">BROADCAST</span>
+          <span>BROADCAST</span>
         </button>
 
         <button
@@ -178,7 +193,7 @@ export const HeaderBar: React.FC = () => {
           className="neo-btn flex items-center space-x-1.5 text-zinc-200 hover:text-white"
         >
           <Plus className="w-3.5 h-3.5 text-emerald-400" />
-          <span className="hidden md:inline">NEW VM</span>
+          <span>NEW VM</span>
         </button>
 
         <button
@@ -186,7 +201,7 @@ export const HeaderBar: React.FC = () => {
           className="neo-btn-primary flex items-center space-x-1.5"
         >
           <Key className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">KEY VAULT</span>
+          <span>KEY VAULT</span>
         </button>
       </div>
     </header>

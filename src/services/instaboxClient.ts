@@ -31,9 +31,13 @@ export function setTrustedProxyOrigin(value: string): string | null {
   return trustedProxyOrigin;
 }
 
+export function isLocalDevOrigin(hostname: string, port: string): boolean {
+  return ['localhost', '127.0.0.1'].includes(hostname) && port === '5173';
+}
+
 export function getApiBaseUrl(): string {
-  if (trustedProxyOrigin) return trustedProxyOrigin;
-  if (typeof window !== 'undefined' && window.location.hostname === 'localhost' && window.location.port === '5173') {
+  if (trustedProxyOrigin) return `${trustedProxyOrigin}/instabox-api`;
+  if (typeof window !== 'undefined' && isLocalDevOrigin(window.location.hostname, window.location.port)) {
     return '/instabox-api';
   }
   return 'https://api.instabox.sh';
@@ -121,18 +125,41 @@ const demoMachines: InstaboxMachine[] = [
 class InstaboxClientService {
   private activeRequests = new AbortController();
   private requestEpoch = 0;
-  private controlSockets = new Set<WebSocket>();
+  private profileRequests = new Map<string, AbortController>();
+  private controlSockets = new Map<WebSocket, string>();
 
-  public registerControlSocket(socket: WebSocket): () => void {
-    this.controlSockets.add(socket);
+  private profileSignal(profileId: string): AbortSignal {
+    let controller = this.profileRequests.get(profileId);
+    if (!controller) {
+      controller = new AbortController();
+      this.profileRequests.set(profileId, controller);
+    }
+    return controller.signal;
+  }
+
+  public registerControlSocket(socket: WebSocket, profileId: string): () => void {
+    this.controlSockets.set(socket, profileId);
     return () => this.controlSockets.delete(socket);
+  }
+
+  public cancelProfile(profileId: string): void {
+    this.profileRequests.get(profileId)?.abort();
+    this.profileRequests.delete(profileId);
+    for (const [socket, owner] of this.controlSockets) {
+      if (owner === profileId) {
+        socket.close();
+        this.controlSockets.delete(socket);
+      }
+    }
   }
 
   public cancelActiveRequests(): void {
     this.requestEpoch += 1;
     this.activeRequests.abort();
     this.activeRequests = new AbortController();
-    for (const socket of this.controlSockets) socket.close();
+    for (const controller of this.profileRequests.values()) controller.abort();
+    this.profileRequests.clear();
+    for (const socket of this.controlSockets.keys()) socket.close();
     this.controlSockets.clear();
   }
 
@@ -145,8 +172,10 @@ class InstaboxClientService {
     init: RequestInit = {}
   ): Promise<T> {
     const epoch = this.requestEpoch;
+    const ownerSignal = this.profileSignal(profileId);
     return await cryptoVault.withDecryptedKey(profileId, async (apiKey) => {
       if (epoch !== this.requestEpoch) throw new DOMException('Vault locked', 'AbortError');
+      ownerSignal.throwIfAborted();
       const baseUrl = getApiBaseUrl();
       const url = `${baseUrl}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
 
@@ -156,9 +185,11 @@ class InstaboxClientService {
         headers.set('Content-Type', 'application/json');
       }
 
-      const signal = init.signal
-        ? AbortSignal.any([init.signal, this.activeRequests.signal])
-        : this.activeRequests.signal;
+      const signal = AbortSignal.any([
+        this.activeRequests.signal,
+        ownerSignal,
+        ...(init.signal ? [init.signal] : []),
+      ]);
       signal.throwIfAborted();
       const res = await fetch(url, { ...init, headers, signal });
 
@@ -400,22 +431,17 @@ class InstaboxClientService {
         let wsUrl = ticket.url;
         const parsed = new URL(wsUrl);
         const allowedHosts = ['api.instabox.sh', 'connect.instabox.sh'];
-        if (trustedProxyOrigin) allowedHosts.push(new URL(trustedProxyOrigin).hostname);
         if (parsed.protocol !== 'wss:' || !allowedHosts.includes(parsed.hostname)) {
           throw new Error('Access ticket returned an unexpected WebSocket destination');
         }
+        const route = parsed.hostname === 'connect.instabox.sh' ? '/instabox-connect' : '/instabox-api';
         if (trustedProxyOrigin) {
-          wsUrl = `${trustedProxyOrigin.replace(/^https:/, 'wss:')}${parsed.pathname}${parsed.search}`;
+          wsUrl = `${trustedProxyOrigin.replace(/^https:/, 'wss:')}${route}${parsed.pathname}${parsed.search}`;
         }
-        // 로컬 개발 환경(localhost:5173)에서는 Vite ws 프록시를 통해 Origin 헤더를 주입받도록 변환
-        if (!trustedProxyOrigin && typeof window !== 'undefined' && window.location.hostname === 'localhost' && window.location.port === '5173') {
-          try {
-            const parsed = new URL(wsUrl);
-            const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            wsUrl = `${proto}//${window.location.host}/instabox-api${parsed.pathname}${parsed.search}`;
-          } catch {
-            // keep original if parsing fails
-          }
+        // 로컬 개발에서는 업스트림 호스트별 Vite WebSocket 프록시를 사용한다.
+        if (!trustedProxyOrigin && typeof window !== 'undefined' && isLocalDevOrigin(window.location.hostname, window.location.port)) {
+          const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+          wsUrl = `${proto}//${window.location.host}${route}${parsed.pathname}${parsed.search}`;
         }
         return {
           url: wsUrl,
@@ -488,14 +514,18 @@ class InstaboxClientService {
 
     try {
       const epoch = this.requestEpoch;
+      const ownerSignal = this.profileSignal(profileId);
       await cryptoVault.withDecryptedKey(profileId, async (apiKey) => {
         if (epoch !== this.requestEpoch) throw new DOMException('Vault locked', 'AbortError');
+        ownerSignal.throwIfAborted();
         const baseUrl = getApiBaseUrl();
         const url = `${baseUrl}/v1/machines/${machineId}/exec`;
 
-        const combinedSignal = signal
-          ? AbortSignal.any([signal, this.activeRequests.signal])
-          : this.activeRequests.signal;
+        const combinedSignal = AbortSignal.any([
+          this.activeRequests.signal,
+          ownerSignal,
+          ...(signal ? [signal] : []),
+        ]);
         combinedSignal.throwIfAborted();
         const res = await fetch(url, {
           method: 'POST',

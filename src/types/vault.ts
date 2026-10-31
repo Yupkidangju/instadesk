@@ -7,7 +7,7 @@
 export interface EncryptedProfileRecord {
   id: string;             // UUID
   label: string;          // 예: "01 // PERSONAL_WORKSPACE", "02 // AGENT_PROD"
-  encryptedData: string;  // Base64(salt:iv:ciphertext)
+  encryptedData: string;  // Base64(iv):Base64(ciphertext + auth tag); salt is in LocalVaultStorage
   keyHint?: string;       // 마스터 비밀번호 힌트 (선택)
   createdAt: string;
   lastUsedAt: string | null;

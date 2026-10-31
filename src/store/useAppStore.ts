@@ -15,6 +15,7 @@ interface AppStoreState {
   isLoadingMachines: boolean;
   lastSyncedAt: Date | null;
   syncError: string | null;
+  profileErrors: Record<string, string>;
   autoRefreshInterval: number; // 0: disabled, 5: 5s, 10: 10s, 30: 30s
 
   isDemoMode: boolean;
@@ -79,6 +80,7 @@ interface AppStoreState {
 }
 
 export const useAppStore = create<AppStoreState>((set, get) => {
+  let refreshGeneration = 0;
   // 초기 볼트 상태 반영
   const isVaultInitialized = cryptoVault.isInitialized();
   const isVaultUnlocked = cryptoVault.isUnlocked();
@@ -87,7 +89,10 @@ export const useAppStore = create<AppStoreState>((set, get) => {
   // 리스너 등록
   cryptoVault.subscribe(() => {
     const unlocked = cryptoVault.isUnlocked();
-    if (!unlocked) instaboxClient.cancelActiveRequests();
+    if (!unlocked) {
+      refreshGeneration += 1;
+      instaboxClient.cancelActiveRequests();
+    }
     set({
       isVaultInitialized: cryptoVault.isInitialized(),
       isVaultUnlocked: unlocked,
@@ -96,6 +101,9 @@ export const useAppStore = create<AppStoreState>((set, get) => {
         tiles: get().tiles.filter((tile) => tile.profileId.startsWith('demo-')),
         machines: get().machines.filter((machine) => machine.profileId.startsWith('demo-')),
         sessionStates: {},
+        profileErrors: {},
+        isLoadingMachines: false,
+        isBroadcastModalOpen: false,
       } : {}),
     });
   });
@@ -109,6 +117,7 @@ export const useAppStore = create<AppStoreState>((set, get) => {
     isLoadingMachines: false,
     lastSyncedAt: null,
     syncError: null,
+    profileErrors: {},
     autoRefreshInterval: 10,
     isDemoMode: false,
 
@@ -181,9 +190,23 @@ export const useAppStore = create<AppStoreState>((set, get) => {
     },
 
     removeProfile: (id: string) => {
+      if (!cryptoVault.isUnlocked()) throw new Error('Unlock the vault before removing a profile.');
+      if (!get().profiles.some((profile) => profile.id === id)) return;
+      refreshGeneration += 1;
+      instaboxClient.cancelProfile(id);
+      const sessionStates = Object.fromEntries(
+        Object.entries(get().sessionStates).filter(([, entry]) => entry.profileId !== id)
+      );
+      set({
+        tiles: get().tiles.filter((tile) => tile.profileId !== id),
+        machines: get().machines.filter((machine) => machine.profileId !== id),
+        sessionStates,
+        isBroadcastModalOpen: false,
+        profileFilter: get().profileFilter === id ? 'all' : get().profileFilter,
+      });
       cryptoVault.removeProfile(id);
       set({ profiles: cryptoVault.listProfiles() });
-      get().refreshMachines();
+      void get().refreshMachines();
     },
 
     enableDemoMode: () => {
@@ -200,40 +223,42 @@ export const useAppStore = create<AppStoreState>((set, get) => {
     },
 
     refreshMachines: async () => {
+      const generation = ++refreshGeneration;
       set({ isLoadingMachines: true, syncError: null });
       try {
         const { profiles, isVaultUnlocked, isDemoMode } = get();
-        let allMachines: InstaboxMachine[] = [];
+        const queriedProfiles = isVaultUnlocked ? profiles : [];
+        const results = await Promise.allSettled(
+          queriedProfiles.map((profile) => instaboxClient.listMachines(profile.id, profile.label))
+        );
+        if (generation !== refreshGeneration) return;
+        const allMachines: InstaboxMachine[] = [];
+        const profileErrors: Record<string, string> = {};
+        results.forEach((result, index) => {
+          const profile = queriedProfiles[index];
+          if (result.status === 'fulfilled') allMachines.push(...result.value);
+          else profileErrors[profile.id] = result.reason instanceof Error ? result.reason.message : 'Connection failed';
+        });
 
-        // 1. 잠금 해제된 실제 프로필들에서 병합 조회
-        if (profiles.length > 0 && isVaultUnlocked) {
-          const promises = profiles.map(async (p) => {
-            try {
-              return await instaboxClient.listMachines(p.id, p.label);
-            } catch (err: unknown) {
-              console.error(`Failed to list machines for ${p.label}:`, err);
-              throw err;
-            }
-          });
-          const results = await Promise.all(promises);
-          allMachines = results.flat();
-        }
-
-        // 2. 데모 모드가 켜져 있는 경우에만 데모 머신 추가
         if (isDemoMode) {
           const demoList = await instaboxClient.listMachines('demo-default', '00 // DEMO_SWISS_CLUSTER');
-          allMachines = [...allMachines, ...demoList];
+          allMachines.push(...demoList);
         }
-
+        if (generation !== refreshGeneration) return;
+        const failedLabels = queriedProfiles.filter((profile) => profileErrors[profile.id]).map((profile) => profile.label);
         set({
           machines: cryptoVault.isUnlocked() ? allMachines : allMachines.filter((m) => m.profileId.startsWith('demo-')),
           isLoadingMachines: false,
           lastSyncedAt: new Date(),
+          profileErrors,
+          syncError: failedLabels.length ? `Sync failed: ${failedLabels.join(', ')}` : null,
         });
       } catch (err: unknown) {
+        if (generation !== refreshGeneration) return;
         set({
           isLoadingMachines: false,
           syncError: (err as Error).message || 'Failed to sync machines',
+          profileErrors: {},
         });
       }
     },

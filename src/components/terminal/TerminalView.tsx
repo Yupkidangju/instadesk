@@ -137,13 +137,13 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
           profileId,
           machineId
         );
-        if (isDisposed || !useAppStore.getState().isVaultUnlocked) {
+        if (isDisposed || !useAppStore.getState().isVaultUnlocked || !useAppStore.getState().profiles.some((p) => p.id === profileId)) {
           useAppStore.getState().releaseSession(tileId);
           return;
         }
 
         const ws = new WebSocket(url, protocols);
-        unregisterSocket = instaboxClient.registerControlSocket(ws);
+        unregisterSocket = instaboxClient.registerControlSocket(ws, profileId);
         ws.binaryType = 'arraybuffer';
         wsRef.current = ws;
 
@@ -241,8 +241,8 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
   return (
     <div className="flex flex-col h-full bg-[#09090b] overflow-hidden select-text">
       {/* 서브 툴바 */}
-      <div className="h-8 bg-zinc-950 border-b border-zinc-800 px-3 flex items-center justify-between text-xs font-mono select-none flex-shrink-0">
-        <div className="flex items-center space-x-2">
+      <div className="min-h-8 bg-zinc-950 border-b border-zinc-800 px-2 py-1 flex flex-wrap items-center justify-between gap-1 text-xs font-mono select-none flex-shrink-0">
+        <div className="flex flex-wrap items-center gap-1 min-w-0">
           {status === 'connected' ? (
             <span className="flex items-center text-emerald-400 space-x-1">
               <Wifi className="w-3 h-3" />
