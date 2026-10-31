@@ -10,7 +10,6 @@ flowchart LR
   UI -->|고정 /instabox-api 경로<br/>요청 시 평문 Bearer| P[Electron 메인 프로세스<br/>app 프로토콜]
   UI -->|제한된 preload IPC<br/>PTY 열기·입력·종료| M[Electron 메인 프로세스<br/>PTY 소켓 관리자]
   P -->|HTTPS 직접 연결| API[api.instabox.sh]
-  M -->|티켓 발급 HTTPS| API
   M -->|WSS 직접 연결| WS[api/connect.instabox.sh]
   UI -->|서명 URL iframe| DESK[dashboard.instabox.sh]
 ```

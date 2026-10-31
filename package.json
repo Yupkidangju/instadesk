@@ -1,7 +1,10 @@
 {
   "name": "instabox-deck",
   "private": true,
-  "version": "1.0.0",
+  "version": "2.0.0",
+  "productName": "InstaDesk",
+  "author": "Yupkidangju <yupkidangju@gmail.com>",
+  "license": "Apache-2.0",
   "type": "module",
   "main": "dist-electron/main.cjs",
   "scripts": {
@@ -12,7 +15,7 @@
     "desktop:dev": "npm run build:desktop && electron .",
     "desktop:start": "electron .",
     "desktop:install": "install-electron",
-    "preview": "vite preview",
+    "package:win": "npm run build:desktop && node scripts/package-win.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"

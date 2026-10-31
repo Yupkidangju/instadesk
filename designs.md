@@ -69,7 +69,7 @@
 - **전역 액션**:
   - `[BROADCAST CMD]`: 복수 실행 중인 VM에 동시 명령 전송 모달 트리거.
   - `[KEY VAULT]`: API 키 관리 및 마스터 패스워드 설정 모달 트리거.
-  - KEY VAULT에서는 실제 키 입력 전에 공개 Pages의 연결 조건과 **개인 Worker URL** 설정 안내를 보여준다. 검증 실패는 키를 삭제하지 않고 `SAVED · CONNECTION UNVERIFIED` 상태와 재시도 동선을 표시한다. 프록시 입력은 HTTPS origin과 명시적 신뢰 확인을 요구한다.
+  - KEY VAULT에서는 앱이 InstaBox API에 직접 연결함을 안내한다. 검증 실패는 키를 삭제하지 않고 `SAVED · CONNECTION UNVERIFIED` 상태와 네트워크·키 권한 확인 동선을 표시한다.
 
 ### 3.2 노드 인벤토리 사이드바 (02_NODE_INVENTORY)
 - **폭**: 넓은 화면에서는 288px 고정. 1024px 미만에서는 헤더의 `NODES` 버튼으로 여는 320px 이하의 서랍이며, 오버레이·닫기 버튼·Esc로 닫는다. 작업 패널을 덮지 않을 때는 전체 화면 폭을 사용한다.

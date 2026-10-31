@@ -1,7 +1,7 @@
-# InstaBox Multi-VM Web Console (InstaBox Deck) Specification
+# InstaDesk 데스크톱 명세
 
-**Document Version:** 2.0.0-draft  
-**Status:** Electron 전환 계약; 실 API/네이티브 검증 전  
+**Document Version:** 2.0.0  
+**Status:** Windows x64 패키지·가짜 키 검증 완료; 유효한 실 API/PTY/Desktop 확인은 미완료  
 **Last Updated:** 2026-11-01  
 
 ---
@@ -150,7 +150,7 @@ export interface LocalVaultStorage {
 - Broadcast 대상은 `(profileId, machineId)` 쌍으로 식별한다. 다른 프로필에서 같은 머신 ID가 나와도 서로 다른 대상과 출력으로 처리한다.
 
 ### 5.4 키 등록과 연결 확인
-- 사용자가 키 등록을 제출하면 먼저 로컬 볼트에 암호화해 저장하고 목록 조회를 한 번 시도한다. 네트워크·CORS 오류 또는 API 오류는 **연결 미검증** 상태로 알리되 암호화 기록을 자동 삭제하지 않는다. 사용자가 삭제 확인을 통해 직접 제거할 수 있다.
+- 사용자가 키 등록을 제출하면 먼저 로컬 볼트에 암호화해 저장하고 목록 조회를 한 번 시도한다. 네트워크 또는 API 오류는 **연결 미검증** 상태로 알리되 암호화 기록을 자동 삭제하지 않는다. 사용자가 삭제 확인을 통해 직접 제거할 수 있다.
 - Electron 앱은 메인 프로세스에서 InstaBox로 직접 연결한다. 키 입력 화면에서 Worker/프록시 설정을 요구하지 않는다. 연결 실패 시 암호화된 키는 보존하되 오류 종류를 표시한다.
 
 ---
