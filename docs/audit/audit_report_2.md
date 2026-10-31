@@ -15,7 +15,7 @@
 | IMP-F003 | 수정 확인 | `instaboxClient.ts`: 최대 100페이지, URL 인코딩, 반복/잘못된 커서 거부. 2페이지 및 반복 커서 테스트. |
 | IMP-F004 | 문서 복구 | React 18, 없는 스크린샷 파일, 작업 경로, 확장·정적 배포 주장과 iframe 미검증 상태를 문서에서 바로잡음. |
 | DBG-F001 | 로컬 경로 확인 | `vite.config.ts`의 `/instadesk/` base. 빌드 HTML이 `/instadesk/assets/`를 참조하고 로컬 preview에서 HTML/JS/CSS 모두 HTTP 200. 실제 Pages URL은 미확인. |
-| DBG-F002 | 로컬 준비 | Git `main` 초기화, `.gitignore`, Pages Actions 워크플로, README/라이선스 추가. 워크플로는 push 때 검사·빌드하며 배포는 수동 실행으로 제한. 원격 Actions 및 Pages 설정은 아직 미검증. |
+| DBG-F002 | 저장소 및 CI 확인 | 공개 `Yupkidangju/instadesk`의 `main`에 커밋 `48856fb` 푸시. `.gitignore`, Pages Actions 워크플로, README/Apache-2.0 라이선스 추가. 원격 build job 통과, deploy job은 의도대로 건너뜀. Pages 설정과 실제 URL은 미검증. |
 | DBG-F003 | 수정 확인 | Vite 8.3.5, Vitest 5.0.5, React 플러그인 6.1.2로 잠금 파일 갱신. 깨끗한 `npm ci`와 `npm audit` 개발·프로덕션 모두 0건. |
 | DBG-F004 | 수정 확인 | SSE CRLF, 청크 분할, 여러 data 줄, EOF, 잘못된 exit, abort 처리. `auditRemediation.test.ts`; 데모 exec 취소도 검증. 실 서비스 SSE는 미검증. |
 | DBG-F005 | 수정 확인 | `CreateVmModal.tsx`는 열릴 때 등록된 실제 프로필을 기본 대상으로 선택하고 데모는 활성화 시에만 노출. 컴포넌트 테스트. |
@@ -35,9 +35,10 @@
 - `npm audit --json` 및 `npm audit --omit=dev --json`: 각각 0건.
 - `npm run preview -- --host 127.0.0.1 --port 4173 --strictPort`: `/instadesk/` HTML 200, JS/CSS 자산 각각 200. 로컬 프리뷰만 확인했으며 Pages 배포 증거가 아니다.
 - `extension/manifest.json`과 `extension/rules.json`을 다시 읽어 권한·활성 규칙이 없음을 확인.
+- GitHub 저장소 공개 상태와 `main` 원격 추적을 확인. [Actions 실행 41216421891](https://github.com/Yupkidangju/instadesk/actions/runs/41216421891)의 `npm ci`, 타입 검사, 24개 테스트, 빌드, Pages artifact 업로드가 통과했다. deploy job은 수동 실행 조건 때문에 건너뛰었다. Actions의 Node.js 20 deprecation/Ubuntu runner 전환 알림은 남아 있다.
 
 ## 제외와 출고 조건
 
-허가된 실 API 키, 운영 프록시, 최종 GitHub Pages URL이 없어 인증 GET/변경, SSE, 실제 PTY/데스크톱, 다른 Origin과의 비교, 모바일/접근성, 실제 서버 429를 실행하지 못했다. GitHub Actions 원격 실행 결과도 아직 없다. 최종 Pages Origin에서 자산 네트워크와 허가된 키를 사용한 실 기능 및 잠금/외부 탭 시나리오를 확인하기 전에는 제품 PASS로 판정하지 않는다.
+허가된 실 API 키, 운영 프록시, 최종 GitHub Pages URL이 없어 인증 GET/변경, SSE, 실제 PTY/데스크톱, 다른 Origin과의 비교, 모바일/접근성, 실제 서버 429를 실행하지 못했다. 최종 Pages Origin에서 자산 네트워크와 허가된 키를 사용한 실 기능 및 잠금/외부 탭 시나리오를 확인하기 전에는 제품 PASS로 판정하지 않는다.
 
 공식 배포 근거: [Vite 정적 배포 안내](https://v6.vite.dev/guide/static-deploy), [GitHub Pages 사용자 지정 워크플로](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages), [Chrome DNR initiator 조건](https://developer.chrome.com/docs/extensions/reference/api/declarativeNetRequest).
