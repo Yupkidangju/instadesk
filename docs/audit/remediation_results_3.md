@@ -15,7 +15,7 @@
 | IMP-F005 | 390px 이상에서 NODES 서랍, 헤더 줄바꿈, 단일 타일 전폭, 좁은 타일 세로 배치를 구현. 390px Exec 입력/RUN, 390/768/1280px SPLIT 및 화면 가로 넘침 없음 확인. | Safari/Firefox, 키보드/스크린리더 전수 검사는 미실행. |
 | IMP-F006 | 프록시 REST/SSE/티켓은 `/instabox-api`, API 호스트 WS는 `/instabox-api`, Connect 호스트 WS는 `/instabox-connect`로 명시·구현·테스트. 알 수 없는 티켓 호스트는 거부. | 허가된 실 티켓과 운영 프록시의 WebSocket 업그레이드 미검증. |
 | DBG-F001 | `/instadesk/` 빌드 자산 경로 및 로컬 preview HTTP 200 재확인. | 실제 Pages URL은 404. |
-| DBG-F002 | 기존 Git/Actions 설정은 유지하고 소스·감사 증거를 검토. | 이 문서의 검사 범위는 로컬이며, 이번 변경의 원격 CI 결과는 푸시 뒤 별도 확인해야 함. |
+| DBG-F002 | 기존 Git/Actions 설정은 유지하고 소스·감사 증거를 검토. 커밋 `eaab4cc`의 원격 build job 통과. | deploy job은 의도대로 건너뛰었고 Pages 사이트는 아직 없음. |
 | DBG-F003 | 깨끗한 설치 후 전체 `npm audit` 0건. | 없음(이번 잠금 파일 기준). |
 | DBG-F004 | 모의 SSE CRLF·EOF·오류 회귀 테스트 재통과. | 실 서비스 장시간 스트림 미검증. |
 | DBG-F005 | Create VM 대상 선택 회귀 테스트 재통과. | 실 VM 생성 미실행. |
@@ -45,7 +45,8 @@
 - Chromium 1280px: [단일 타일 전폭](evidence_4/desktop_1280_split.png), 작업 영역 992px 중 타일 976px. 문서 전체 폭 1280px.
 - 개발 서버에서 Playwright 네트워크 route로 `/instabox-api/v1/machines`에 모의 JSON을 반환했다. 가짜 `ibk_mock_browser` 키로 UI를 통과시킨 GET은 `localhost:5173`과 `127.0.0.1:5173`에서 모두 각 호스트의 `/instabox-api/v1/machines`로 향했고 HTTP 200이었다. 실 API로 보내지 않았다.
 - 읽기 전용 확인: `gh api repos/Yupkidangju/instadesk/pages` 404, 예상 Pages URL도 HTTP 404. Pages 배포 job은 실행하지 않았다.
+- [원격 Actions 실행 41222276550](https://github.com/Yupkidangju/instadesk/actions/runs/41222276550): 커밋 `eaab4cc`의 `npm ci`, 타입 검사, 36개 테스트, 빌드, Pages artifact 업로드 성공. deploy job은 수동 실행 조건으로 건너뛰었다. Actions의 Node.js 20 사용 중단/Ubuntu runner 전환 알림은 남아 있다.
 
 ## 남은 HOLD 조건
 
-허가된 실 InstaBox 키와 운영 프록시가 없어 REST 변경, SSE, 실제 PTY/Connect 티켓, Desktop iframe, 서버 429, 삭제 후 서버 세션 무효화를 확인하지 못했다. Pages는 아직 게시되지 않았으며 사용자가 직접 설정/수동 배포하기로 한 지시를 유지했다. 이 보고서의 검증 범위에는 이번 변경의 원격 CI 실행이 포함되지 않는다. 최종 배포 Origin과 실 서비스 동작을 별도 독립 감사자가 검증하기 전까지 전체 제품 PASS를 주장하지 않는다.
+허가된 실 InstaBox 키와 운영 프록시가 없어 REST 변경, SSE, 실제 PTY/Connect 티켓, Desktop iframe, 서버 429, 삭제 후 서버 세션 무효화를 확인하지 못했다. Pages는 아직 게시되지 않았으며 사용자가 직접 설정/수동 배포하기로 한 지시를 유지했다. 최종 배포 Origin과 실 서비스 동작을 별도 독립 감사자가 검증하기 전까지 전체 제품 PASS를 주장하지 않는다.
