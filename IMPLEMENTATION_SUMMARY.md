@@ -22,6 +22,6 @@ InstaDesk.exe
 
 ## 데이터 흐름
 
-마스터 암호 → 렌더러 Web Crypto 세션 키 → 앱 Origin localStorage의 암호화 프로필 → 요청 중 복호화 → app 프로토콜의 메인 HTTPS 호출. PTY는 REST 티켓 발급 후 제한 IPC로 메인 WebSocket을 열고 이벤트만 렌더러에 보낸다. 데스크톱 iframe은 발급된 URL을 사용하며 원격 프레임 정책은 별도 검증 대상이다.
+마스터 암호 → 렌더러 Web Crypto 세션 키 → 앱 Origin localStorage의 암호화 프로필 → 요청 중 복호화 → app 프로토콜의 메인 HTTPS 호출. PTY는 REST 티켓 발급 후 제한 IPC로 메인 WebSocket을 열고 이벤트만 렌더러에 보낸다. 데스크톱은 발급된 URL을 격리된 최상위 `WebContentsView`에 열며 메인 프로세스가 URL과 좌표를 검증한다.
 
 빌드·검증은 [BUILD_GUIDE.md](BUILD_GUIDE.md)와 [Electron 검증 기록](docs/electron/verification.md)을 참조한다. 유효한 실 키 연결은 아직 HOLD다.

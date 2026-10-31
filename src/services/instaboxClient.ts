@@ -371,18 +371,22 @@ class InstaboxClientService {
    */
   public async getTerminalWebSocketUrl(
     profileId: string,
-    machineId: string
+    machineId: string,
+    sessionName = 'main'
   ): Promise<{ url: string; protocols?: string[] }> {
     try {
       const ticket = await this.createAccessTicket(profileId, machineId, 'terminal');
       if (ticket.token && ticket.url) {
         const parsed = new URL(ticket.url);
         const allowedHosts = ['api.instabox.sh', 'connect.instabox.sh'];
-        if (parsed.protocol !== 'wss:' || !allowedHosts.includes(parsed.hostname)) {
+        if (parsed.protocol !== 'wss:' || !allowedHosts.includes(parsed.hostname) ||
+            parsed.username || parsed.password || parsed.port || parsed.hash) {
           throw new Error('Access ticket returned an unexpected WebSocket destination');
         }
+        if (!/^[a-z0-9-]{1,32}$/.test(sessionName)) throw new Error('Invalid terminal session');
+        parsed.searchParams.set('session', sessionName);
         return {
-          url: ticket.url,
+          url: parsed.toString(),
           protocols: [ticket.protocol || 'instabox-terminal.v1', `instabox-access-token.${ticket.token}`],
         };
       }

@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { instaboxClient } from '../../services/instaboxClient';
 import { DesktopStatus } from '../../types/instabox';
 import { fitDesktop } from './fitDesktop';
+import { useAppStore } from '../../store/useAppStore';
 import {
   Monitor,
   Play,
@@ -38,9 +39,25 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
   });
   const viewportRef = useRef<HTMLDivElement>(null);
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
+  const [nativeStatus, setNativeStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
+  const modalOpen = useAppStore((state) => state.isApiKeyModalOpen || state.isUnlockModalOpen ||
+    state.isBroadcastModalOpen || state.isCreateVmModalOpen);
+  const machineState = useAppStore((state) => state.machines.find((machine) =>
+    machine.id === machineId && machine.profileId === profileId)?.state);
+  const machineReady = !machineState || machineState === 'running';
+  const viewId = `desktop_${profileId}_${machineId}`;
   const frameWidth = desktopStatus?.width || resolution.width;
   const frameHeight = desktopStatus?.height || resolution.height;
   const fitted = fitDesktop(frameWidth, frameHeight, viewport.width, viewport.height);
+  const viewBounds = () => {
+    const rect = viewportRef.current?.getBoundingClientRect();
+    if (!rect || viewport.width < 1 || viewport.height < 1 || rect.width < 1 || rect.height < 1 ||
+        fitted.width < 1 || fitted.height < 1) return null;
+    const x = Math.max(0, Math.round(rect.left + (rect.width - fitted.width) / 2));
+    const y = Math.max(0, Math.round(rect.top + (rect.height - fitted.height) / 2));
+    return { x, y, width: Math.max(1, Math.round(fitted.width)), height: Math.max(1, Math.round(fitted.height)) };
+  };
+  const zoom = Math.max(0.25, Math.min(5, fitted.scale));
 
   useEffect(() => {
     const element = viewportRef.current;
@@ -58,6 +75,11 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
   const loadDesktop = async () => {
     setIsLoading(true);
     setErrorMessage(null);
+    setStreamUrl(null);
+    if (!machineReady) {
+      setIsLoading(false);
+      return;
+    }
     try {
       // 1. 데스크톱 상태 확인
       const status = await instaboxClient.desktopAction(profileId, machineId, 'status');
@@ -79,7 +101,44 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
 
   useEffect(() => {
     loadDesktop();
-  }, [machineId, profileId, viewOnly]);
+  }, [machineId, profileId, viewOnly, machineReady]);
+
+  useEffect(() => {
+    const bridge = window.instadeskDesktop;
+    const bounds = viewBounds();
+    if (!bridge || profileId.startsWith('demo-') || !streamUrl || !desktopStatus?.running ||
+        modalOpen || !bounds) return;
+    let active = true;
+    setNativeStatus('loading');
+    const unsubscribe = bridge.onDesktopEvent((event) => {
+      if (!active || event.id !== viewId) return;
+      setNativeStatus(event.type === 'loaded' ? 'loaded' : 'error');
+      if (event.type === 'error') void bridge.closeDesktopView(viewId);
+    });
+    void bridge.openDesktopView({ id: viewId, profileId, url: streamUrl, bounds, zoom })
+      .catch(() => { if (active) setNativeStatus('error'); });
+    return () => {
+      active = false;
+      unsubscribe();
+      void bridge.closeDesktopView(viewId);
+    };
+  }, [streamUrl, profileId, viewId, desktopStatus?.running, modalOpen, viewport.width > 0, viewport.height > 0]);
+
+  useEffect(() => {
+    const bridge = window.instadeskDesktop;
+    if (!bridge || !streamUrl || modalOpen || profileId.startsWith('demo-')) return;
+    const update = () => {
+      const bounds = viewBounds();
+      if (bounds) void bridge.updateDesktopView(viewId, bounds, zoom);
+    };
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
+    };
+  }, [streamUrl, viewId, modalOpen, fitted.width, fitted.height, zoom]);
 
   // 데스크톱 시작 (Xvfb + Xfce + Chromium)
   const handleStartDesktop = async () => {
@@ -105,7 +164,7 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
 
   // 제어권 인수(Takeover) / 반환(Handback) 토글
   const handleToggleTakeover = async () => {
-    if (!desktopStatus?.running) return;
+    if (!machineReady || !desktopStatus?.running) return;
     try {
       const isCurrentlyHuman = desktopStatus.controller === 'human';
       const action = isCurrentlyHuman ? 'handback' : 'takeover';
@@ -122,7 +181,7 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
       {/* 데스크톱 상단 툴바 */}
       <div className="min-h-8 bg-zinc-950 border-b border-zinc-800 px-2 py-1 flex flex-wrap items-center justify-between gap-1 text-xs font-mono flex-shrink-0">
         <div className="flex flex-wrap items-center gap-1 min-w-0">
-          {desktopStatus?.running ? (
+          {machineReady && desktopStatus?.running ? (
             <span className="flex items-center text-emerald-400 space-x-1">
               <Monitor className="w-3.5 h-3.5" />
               <span className="text-[10px] font-bold">XFCE LIVE</span>
@@ -139,7 +198,7 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
           {/* 제어 모드 토글 */}
           <button
             onClick={handleToggleTakeover}
-            disabled={!desktopStatus?.running}
+            disabled={!machineReady || !desktopStatus?.running}
             title="Toggle between passive monitoring and human mouse/keyboard control"
             className={`flex items-center space-x-1 px-1.5 py-0.5 border text-[10px] font-bold transition-colors ${
               !viewOnly
@@ -205,6 +264,12 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
           <div className="flex flex-col items-center justify-center space-y-2 text-zinc-500 font-mono text-xs">
             <Loader2 className="w-6 h-6 animate-spin text-swiss-red" />
             <span>ESTABLISHING DESKTOP STREAM...</span>
+          </div>
+        ) : !machineReady ? (
+          <div role="status" className="max-w-md p-6 text-center space-y-2 border border-amber-800 bg-amber-950/30 font-mono text-xs text-amber-200">
+            <AlertTriangle className="w-6 h-6 mx-auto" />
+            <p>VM IS {machineState?.toUpperCase()}</p>
+            <p className="text-zinc-400">Resume or start this VM from Node Inventory, then refresh the desktop stream.</p>
           </div>
         ) : !desktopStatus?.running ? (
           /* 데스크톱이 아직 켜지지 않은 경우 */
@@ -295,14 +360,9 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
               </div>
             </div>
           ) : (
-            <div style={{ width: frameWidth, height: frameHeight, transform: `scale(${fitted.scale})`, transformOrigin: 'top left' }}>
-              <iframe
-              src={streamUrl}
-              title={`Desktop Stream ${machineId}`}
-              style={{ width: frameWidth, height: frameHeight }}
-              className="border-0"
-              allow="clipboard-read; clipboard-write; fullscreen; autoplay"
-              />
+            <div role="status" className="flex h-full w-full items-center justify-center text-center font-mono text-xs text-zinc-500 p-4">
+              {nativeStatus === 'error' ? 'DESKTOP VIEW FAILED — REFRESH OR OPEN EXTERNALLY' :
+                nativeStatus === 'loaded' ? 'DESKTOP VIEW ACTIVE' : 'LOADING DESKTOP VIEW...'}
             </div>
           )
             }

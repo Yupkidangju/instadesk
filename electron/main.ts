@@ -5,6 +5,8 @@ import { pathToFileURL } from 'node:url';
 import { resolveAppAsset } from './appProtocol';
 import { proxyApiRequest } from './apiGateway';
 import { TerminalGateway, type TerminalOpenRequest } from './terminalGateway';
+import { DesktopViewGateway } from './desktopViewGateway';
+import type { DesktopViewBounds, DesktopViewRequest } from './desktopViewPolicy';
 
 protocol.registerSchemesAsPrivileged([{
   scheme: 'app',
@@ -13,6 +15,13 @@ protocol.registerSchemesAsPrivileged([{
 
 const rendererRoot = path.join(app.getAppPath(), 'dist');
 const appOrigin = 'app://instadesk';
+const ownsInstance = app.requestSingleInstanceLock();
+if (!ownsInstance) app.quit();
+app.on('second-instance', () => {
+  const existing = BrowserWindow.getAllWindows()[0];
+  if (existing?.isMinimized()) existing.restore();
+  existing?.focus();
+});
 
 function createWindow(): void {
   const window = new BrowserWindow({
@@ -33,6 +42,9 @@ function createWindow(): void {
 
   const terminals = new TerminalGateway((event) => {
     if (!window.isDestroyed()) window.webContents.send('terminal:event', event);
+  });
+  const desktops = new DesktopViewGateway(window, (event) => {
+    if (!window.isDestroyed()) window.webContents.send('desktop:event', event);
   });
   const ownRenderer = (event: Electron.IpcMainInvokeEvent): void => {
     if (event.sender !== window.webContents || !event.senderFrame?.url.startsWith(`${appOrigin}/`)) {
@@ -58,14 +70,29 @@ function createWindow(): void {
   ipcMain.handle('terminal:closeProfile', (event, profileId: string) => {
     ownRenderer(event);
     terminals.closeProfile(profileId);
+    desktops.closeProfile(profileId);
   });
   ipcMain.handle('terminal:closeAll', (event) => {
     ownRenderer(event);
     terminals.closeAll();
+    desktops.closeAll();
+  });
+  ipcMain.handle('desktop:open', (event, request: DesktopViewRequest) => {
+    ownRenderer(event);
+    desktops.open(request);
+  });
+  ipcMain.handle('desktop:update', (event, id: string, bounds: DesktopViewBounds, zoom: number) => {
+    ownRenderer(event);
+    desktops.update(id, bounds, zoom);
+  });
+  ipcMain.handle('desktop:close', (event, id: string) => {
+    ownRenderer(event);
+    desktops.close(id);
   });
   window.on('closed', () => {
     terminals.closeAll();
-    for (const channel of ['terminal:open', 'terminal:send', 'terminal:resize', 'terminal:close', 'terminal:closeProfile', 'terminal:closeAll']) {
+    desktops.closeAll();
+    for (const channel of ['terminal:open', 'terminal:send', 'terminal:resize', 'terminal:close', 'terminal:closeProfile', 'terminal:closeAll', 'desktop:open', 'desktop:update', 'desktop:close']) {
       ipcMain.removeHandler(channel);
     }
   });
@@ -85,6 +112,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  if (!ownsInstance) return;
   session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   protocol.handle('app', async (request) => {
     if (new URL(request.url).pathname.startsWith('/instabox-api/')) return proxyApiRequest(request);
@@ -102,7 +130,7 @@ app.whenReady().then(() => {
         "img-src 'self' data:",
         "font-src 'self' data:",
         "connect-src 'self'",
-        'frame-src https://dashboard.instabox.sh',
+        "frame-src 'none'",
         "object-src 'none'",
         "base-uri 'none'",
         "form-action 'none'",

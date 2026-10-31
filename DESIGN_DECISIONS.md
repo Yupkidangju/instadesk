@@ -62,8 +62,8 @@
 ## 4. Decision 04: 화면(Desktop) 및 터미널(Terminal) 듀얼 통합 방식
 
 ### 4.1 데스크톱 화면
-- `POST /v1/machines/{id}/desktop/stream`의 iframe 정책은 최종 배포 Origin에서 아직 재검증되지 않았다.
-- 복잡한 WebRTC/noVNC 캔버스 렌더러 대신 서비스가 발급한 뷰어를 `iframe`으로 임베딩한다. 성능, 브라우저 정책과 키보드/마우스 제어는 최종 Origin에서 확인해야 한다.
+- `POST /v1/machines/{id}/desktop/stream`의 iframe 방식은 실 키 검증에서 거부됨을 확인했다. Decision 08이 현행 방식이다.
+- 초기 구현은 서비스가 발급한 뷰어를 `iframe`으로 임베딩했다. 실 키 검증에서 프레임 정책으로 실패해 Decision 08의 격리된 최상위 뷰로 변경했다.
 - Workspace Key용 주기적 스크린샷 뷰어 폴백은 현재 구현되지 않았다. 실 서비스 계약을 확인한 뒤 별도 범위로 결정한다.
 
 ### 4.2 터미널
@@ -77,8 +77,12 @@
 
 ## 6. Decision 06: 조절 가능한 터미널·데스크톱 화면
 
-같은 VM의 PTY와 데스크톱을 동시에 사용할 때 단일 타일의 SPLIT 탭을 사용한다. 타일 가용 폭 700px부터 좌우 분할을 제공하고, 더 좁으면 상하 분할로 바꾼다. 구분선은 포인터와 키보드로 25~75%를 조절한다. 데스크톱 iframe은 서비스가 보고한 해상도 또는 선택한 기본 해상도를 논리 크기로 두고 `min(가용폭/원본폭, 가용높이/원본높이)` 배율로 맞춘다. 데모 화면은 같은 화면비 안에서 글자를 읽을 수 있게 재배치한다. 외부 iframe의 실제 내부 렌더링은 허가된 실 계정에서 검증해야 한다.
+같은 VM의 PTY와 데스크톱을 동시에 사용할 때 단일 타일의 SPLIT 탭을 사용한다. 타일 가용 폭 700px부터 좌우 분할을 제공하고, 더 좁으면 상하 분할로 바꾼다. 구분선은 포인터와 키보드로 25~75%를 조절한다. 데스크톱 뷰는 서비스가 보고한 해상도 또는 선택한 기본 해상도를 논리 크기로 두고 `min(가용폭/원본폭, 가용높이/원본높이)` 배율로 맞춘다. 데모 화면은 같은 화면비 안에서 글자를 읽을 수 있게 재배치한다. 실제 스트림 내부 렌더링은 허가된 실 계정에서 검증한다.
 
 ## 7. Decision 07: Electron 데스크톱 전환
 
-사용자가 공개 웹의 CORS/공용 프록시 신뢰 경계를 제거하고 설치형 Electron 앱으로 전면 전환하기로 결정했다. Windows x64를 첫 대상(가정)으로 삼고 기존 React UI와 로컬 암호화 볼트를 `app://instadesk`에 묶는다. REST/SSE는 Electron 메인의 고정 API 라우트, PTY는 메인의 WSS 연결과 제한된 IPC로 처리한다. 렌더러의 `webSecurity`를 끄거나 Node 통합을 켜는 방식은 채택하지 않는다. Desktop iframe의 외부 정책은 실 키 검증 전까지 HOLD다. 기술 경계와 검증은 `docs/electron/architecture.md`에 기록한다. 검증된 데스크톱 대체물이 준비되면 Pages 사이트와 사용자 계정의 개인 Worker 게시를 제거한다.
+사용자가 공개 웹의 CORS/공용 프록시 신뢰 경계를 제거하고 설치형 Electron 앱으로 전면 전환하기로 결정했다. Windows x64를 첫 대상(가정)으로 삼고 기존 React UI와 로컬 암호화 볼트를 `app://instadesk`에 묶는다. REST/SSE는 Electron 메인의 고정 API 라우트, PTY는 메인의 WSS 연결과 제한된 IPC로 처리한다. 렌더러의 `webSecurity`를 끄거나 Node 통합을 켜는 방식은 채택하지 않는다. Desktop 표시 방식은 Decision 08로 보완했다. 기술 경계와 검증은 `docs/electron/architecture.md`에 기록한다. 검증된 데스크톱 대체물이 준비되면 Pages 사이트와 사용자 계정의 개인 Worker 게시를 제거한다.
+
+## 8. Decision 08: 서명 Desktop 링크의 최상위 뷰
+
+실 키로 발급된 Desktop 링크가 iframe에서 검게 표시됐다. 대시보드 응답은 `X-Frame-Options: DENY`와 `Content-Security-Policy: frame-ancestors 'none'`이므로 앱 프레임에 삽입할 수 없다. 보안 정책을 무력화하지 않고 Electron `WebContentsView`를 앱 안의 화면 영역에 배치해 서명 링크를 최상위 문서로 연다. 메인에서 URL·좌표를 제한하고, 격리된 뷰에는 preload와 Node 통합을 주지 않는다. 모달/볼트 잠금/프로필 삭제 시 닫는다. 실제 스트림·입력의 최종 수용은 사용자 VM 검증으로 결정한다.

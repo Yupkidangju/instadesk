@@ -1,0 +1,27 @@
+name: Windows desktop build
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows-x64:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run desktop:install
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm audit --audit-level=high
+      - run: npm run package:win
+      - uses: actions/upload-artifact@v4
+        with:
+          name: InstaDesk-win-x64
+          path: release/InstaDesk-*-win-x64.zip
+          if-no-files-found: error

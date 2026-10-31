@@ -16,6 +16,7 @@ export interface TerminalEvent {
 
 const allowedHosts = new Set(['api.instabox.sh', 'connect.instabox.sh']);
 const sessions = new Set(['main', 'agent', 'aux']);
+const wsProtocolToken = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
 
 function validate(request: TerminalOpenRequest): void {
   if (!/^[A-Za-z0-9_-]{1,128}$/.test(request.id) ||
@@ -27,8 +28,11 @@ function validate(request: TerminalOpenRequest): void {
       url.username || url.password || url.hash || !url.pathname.startsWith('/v1/') ||
       /%(?:2f|5c|00)/i.test(url.pathname)) throw new Error('Terminal destination denied');
   if (!Array.isArray(request.protocols) || request.protocols.length !== 2 ||
-      request.protocols[0] !== 'instabox-terminal.v1' ||
-      !/^instabox-access-token\.[A-Za-z0-9_-]{1,512}$/.test(request.protocols[1])) {
+      typeof request.protocols[0] !== 'string' || !request.protocols[0] ||
+      request.protocols[0].length > 128 || !wsProtocolToken.test(request.protocols[0]) ||
+      typeof request.protocols[1] !== 'string' || request.protocols[1].length > 2048 ||
+      !request.protocols[1].startsWith('instabox-access-token.') ||
+      !wsProtocolToken.test(request.protocols[1])) {
     throw new Error('Invalid terminal ticket protocols');
   }
 }

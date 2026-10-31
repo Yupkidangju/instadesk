@@ -11,13 +11,16 @@ flowchart LR
   UI -->|제한된 preload IPC<br/>PTY 열기·입력·종료| M[Electron 메인 프로세스<br/>PTY 소켓 관리자]
   P -->|HTTPS 직접 연결| API[api.instabox.sh]
   M -->|WSS 직접 연결| WS[api/connect.instabox.sh]
-  UI -->|서명 URL iframe| DESK[dashboard.instabox.sh]
+  UI -->|제한 IPC·화면 좌표| VIEW[Electron WebContentsView]
+  VIEW -->|서명 URL 최상위 탐색| DESK[dashboard.instabox.sh]
 ```
 
 - 렌더러는 **번들된 로컬 파일만** 전용 `app://instadesk` 보안 Origin에서 실행한다. Web Crypto로 암호화된 키는 해당 앱 Origin의 localStorage에 저장한다. 마스터 비밀번호와 평문 키는 영구 저장하지 않는다. 이전 GitHub Pages Origin의 볼트는 자동으로 이전하지 않는다.
 - REST/SSE는 메인 프로세스가 `/instabox-api/v1/*`에 대한 `app://` 요청을 고정 `https://api.instabox.sh/v1/*`로 전달한다. 렌더러는 브라우저 CORS 없이 동일 앱 Origin을 호출하고, 메인은 키를 기록하지 않는다. 메인 프로세스는 경로·메서드·목적지·리다이렉트를 검증한다.
-- PTY 액세스 티켓은 기존 REST 경로로 발급받고, 렌더러가 티켓 URL과 제한된 서브프로토콜을 IPC로 메인에 전달한다. 메인은 허용된 WSS 호스트·경로·서브프로토콜을 재검증하고 소켓을 연결한다. 잠금·프로필 제거 때 해당 소켓과 요청을 중단한다.
-- Desktop iframe은 원격 서비스의 frame policy 및 토큰 형식에 영향을 받는다. Electron의 네트워크 경로로 자동 해결된다고 간주하지 않고 실제 허가된 키로 확인한다. 원격 프레임은 Node/Electron 권한을 받지 않는다.
+- PTY 액세스 티켓은 기존 REST 경로로 발급받고, 렌더러가 티켓 URL과 서비스가 반환한 서브프로토콜·토큰을 IPC로 메인에 전달한다. 메인은 허용된 WSS 호스트·경로와 WebSocket 토큰 문법을 재검증한다. 서브프로토콜 이름은 서비스 응답에 따르며 티켓 토큰의 점(`.`)을 허용한다. 선택한 세션 이름은 URL의 `session` 쿼리로 보낸다. 잠금·프로필 제거 때 해당 소켓과 요청을 중단한다.
+- 실제 Desktop 링크는 `dashboard.instabox.sh`가 `X-Frame-Options: DENY`와 `frame-ancestors 'none'`을 보내므로 iframe 대신 Electron의 별도 `WebContentsView`에 최상위 문서로 연다. 메인은 링크의 고정 HTTPS Origin과 화면 좌표를 검증한다. 원격 뷰에는 preload/Node 권한을 주지 않으며 앱 모달·잠금·프로필 제거 때 뷰를 닫는다. 스트림 내부 연결과 실제 입력은 실 키로 검증한다.
+- VM이 `suspended`·`stopped` 등 실행 중이 아닌 상태이면 새 Desktop 링크를 열지 않고 현재 머신 상태와 재개 안내를 표시한다. 사용자가 사이드바에서 VM을 재개해 `running` 상태가 확인되면 링크를 다시 발급한다.
+- 앱은 중복 인스턴스를 막고 기존 창을 전면으로 올린다. 개발 실행과 패키지도 같은 사용자 데이터 위치에 접근할 수 있으므로 동시에 실행하지 않는다. 실제로 병행 실행 때 Chromium 캐시 잠금 오류가 관찰되어 볼트 저장소 보호가 필요하다.
 
 ## 보안 경계
 

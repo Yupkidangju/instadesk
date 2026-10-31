@@ -5,6 +5,18 @@ All notable changes to the InstaBox Deck project will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.2] - 2026-11-01
+
+### Fixed
+- 포터블 앱의 중복 인스턴스를 차단해 Chromium 볼트 저장소에 동시 접근하지 않도록 했습니다.
+- Desktop 뷰 종료 시 창이 이미 파괴된 경우를 처리하고 포터블 패키지의 출력 디렉터리 링크를 거부합니다.
+
+## [2.0.1] - 2026-11-01
+
+### Fixed
+- 실제 PTY 티켓의 서비스 서브프로토콜과 점이 포함된 토큰을 허용하고 선택한 세션을 URL 쿼리로 전달합니다.
+- 대시보드가 iframe을 차단하는 Desktop 링크를 격리된 Electron `WebContentsView`의 최상위 문서로 표시합니다. 실행 중이 아닌 VM에는 재개 안내를 표시합니다.
+
 ## [2.0.0] - 2026-11-01
 
 ### Added

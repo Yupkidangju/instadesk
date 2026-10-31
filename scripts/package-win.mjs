@@ -15,6 +15,10 @@ const name = `InstaDesk-${manifest.version}-win-x64`;
 const packageDir = path.join(releaseRoot, name);
 const zipPath = path.join(releaseRoot, `${name}.zip`);
 
+if (fs.existsSync(releaseRoot) && fs.lstatSync(releaseRoot).isSymbolicLink()) {
+  throw new Error('Release directory must not be a symlink');
+}
+
 for (const required of [
   path.join(electronDist, 'electron.exe'),
   path.join(electronDist, 'electron_wer.dll'),

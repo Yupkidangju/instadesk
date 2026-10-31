@@ -19,7 +19,7 @@ class FakeSocket extends EventEmitter {
 
 const valid = (id = 'one', profileId = 'p1') => ({
   id, profileId, sessionName: 'main',
-  url: 'wss://connect.instabox.sh/v1/terminal?ticket=abc',
+  url: 'wss://connect.instabox.sh/v1/machines/m_1/terminal?session=main',
   protocols: ['instabox-terminal.v1', 'instabox-access-token.abc'],
 });
 
@@ -44,6 +44,13 @@ describe('Electron terminal gateway', () => {
     expect(() => gateway.open({ ...valid(), protocols: ['instabox-terminal.v1', 'bad'] })).toThrow();
     expect(() => gateway.open({ ...valid(), sessionName: 'unknown' })).toThrow();
     expect(FakeSocket.instances).toHaveLength(0);
+  });
+
+  it('accepts the service-selected protocol and dotted short-lived access token', () => {
+    const { gateway } = setup();
+    gateway.open({ ...valid(), protocols: ['instabox.terminal.v2', 'instabox-access-token.iba_part.one.two'] });
+    expect(FakeSocket.instances).toHaveLength(1);
+    expect(FakeSocket.instances[0].protocols[1]).toBe('instabox-access-token.iba_part.one.two');
   });
 
   it('forwards open, output, input, resize and close for the owning id', () => {

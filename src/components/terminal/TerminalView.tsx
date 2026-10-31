@@ -135,7 +135,8 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
         }
         const { url, protocols } = await instaboxClient.getTerminalWebSocketUrl(
           profileId,
-          machineId
+          machineId,
+          sessionName
         );
         if (isDisposed || !useAppStore.getState().isVaultUnlocked || !useAppStore.getState().profiles.some((p) => p.id === profileId)) {
           useAppStore.getState().releaseSession(tileId);

@@ -77,27 +77,37 @@ describe('Audit 1 network and session regressions', () => {
   it('routes REST through the Electron app origin and retains the fixed PTY ticket host', async () => {
     expect(getApiBaseUrl()).toBe('/instabox-api');
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
-      url: 'wss://connect.instabox.sh/v1/terminal?ticket=abc', token: 'abc', protocol: 'instabox-terminal.v1',
+      url: 'wss://connect.instabox.sh/v1/terminal', token: 'abc', protocol: 'instabox-terminal.v1',
     }), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
     const ticket = await instaboxClient.getTerminalWebSocketUrl(profileId, 'm_1');
     expect(fetchMock.mock.calls[0][0]).toBe('/instabox-api/v1/machines/m_1/access');
-    expect(ticket.url).toBe('wss://connect.instabox.sh/v1/terminal?ticket=abc');
+    expect(ticket.url).toBe('wss://connect.instabox.sh/v1/terminal?session=main');
   });
 
   it('accepts an API-host PTY ticket and rejects unknown hosts', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({
-        url: 'wss://api.instabox.sh/v1/terminal?ticket=ok', token: 'ok',
+        url: 'wss://api.instabox.sh/v1/terminal', token: 'ok',
       }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({
         url: 'wss://unexpected.example/v1/terminal', token: 'bad',
       }), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
     expect((await instaboxClient.getTerminalWebSocketUrl(profileId, 'm_1')).url)
-      .toBe('wss://api.instabox.sh/v1/terminal?ticket=ok');
+      .toBe('wss://api.instabox.sh/v1/terminal?session=main');
     await expect(instaboxClient.getTerminalWebSocketUrl(profileId, 'm_1'))
       .rejects.toThrow('unexpected WebSocket destination');
+  });
+
+  it('passes the selected PTY session without putting the ticket in the URL', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      url: 'wss://api.instabox.sh/v1/machines/m_1/terminal',
+      token: 'iba_part.one.two', protocol: 'instabox.terminal.v2',
+    }), { status: 200 })));
+    const ticket = await instaboxClient.getTerminalWebSocketUrl(profileId, 'm_1', 'agent');
+    expect(ticket.url).toBe('wss://api.instabox.sh/v1/machines/m_1/terminal?session=agent');
+    expect(ticket.protocols).toEqual(['instabox.terminal.v2', 'instabox-access-token.iba_part.one.two']);
   });
 
   it('counts connection reservations, frees closed sessions, and clears real tiles on lock', () => {

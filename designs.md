@@ -63,7 +63,7 @@
   - 잠금 상태: `[■ LOCKED]` (Zinc 600 버튼, 마스터 패스워드 입력 유도).
   - 잠금 해제 상태: `[● VAULT UNLOCKED]` (로컬 저장 암호화, 에메랄드 도트).
 - **세션 쿼터 미터**:
-  - `PTY: {total} TOTAL · MAX {profileCount} / 8 PER KEY` (프로필별 최대 6개 이상 시 노란색, 8개 시 붉은색 경고). 데스크톱 iframe과 외부 세션은 포함되지 않는다.
+  - `PTY: {total} TOTAL · MAX {profileCount} / 8 PER KEY` (프로필별 최대 6개 이상 시 노란색, 8개 시 붉은색 경고). 데스크톱 뷰와 외부 세션은 포함되지 않는다.
 - **그리드 레이아웃 선택기**:
   - `[1x1]`, `[2x1]`, `[2x2]`, `[AUTO]` 토글 버튼 세트 (활성 탭은 `bg-zinc-100 text-zinc-950 font-bold`).
 - **전역 액션**:
@@ -92,21 +92,21 @@
 
 ### 3.3 워크스페이스 타일 그리드 (03_WORKSPACE_GRID)
 - **그리드 구성**:
-  - `1x1`: 단일 VM 전체 화면 집중 모드. 여러 타일이 저장돼 있으면 선택 줄에서 표시할 타일을 고른다. 표시되지 않는 타일의 PTY/iframe은 언마운트된다.
+  - `1x1`: 단일 VM 전체 화면 집중 모드. 여러 타일이 저장돼 있으면 선택 줄에서 표시할 타일을 고른다. 표시되지 않는 타일의 PTY/데스크톱 뷰는 종료된다.
   - `2x1`: 좌우 2분할 듀얼 모니터링 (예: 좌측 터미널, 우측 데스크톱 화면).
   - `2x2`: 4분할 쿼드 관제실 모드.
   - 한 타일은 항상 작업 영역 전폭. 1280px 미만에서 여러 타일은 한 열과 세로 스크롤로 전환한다. 390px에서 주요 작업 탭·명령 입력·전역 버튼이 잘리지 않아야 한다.
 - **개별 타일 헤더 (Tile Header)**:
   - 타일 인덱스: `TILE_01 // box-prod-web-01`.
   - 탭 스위처: `[TERMINAL (PTY)]` | `[DESKTOP (VNC/STREAM)]` | `[SPLIT]` | `[EXEC (SSE)]` | `[LOGS]` | `[PROCESSES]`. 좁은 폭에서는 탭 줄을 별도 행에 배치한다.
-  - SPLIT: 타일 폭 700px 이상은 좌측 터미널/우측 데스크톱, 25~75% 드래그 구분선과 키보드 화살표 조절. 좁은 타일은 상하 배치. Desktop iframe/데모 화면은 논리 해상도를 유지하며 남은 영역에 비율 맞춤.
+  - SPLIT: 타일 폭 700px 이상은 좌측 터미널/우측 데스크톱, 25~75% 드래그 구분선과 키보드 화살표 조절. 좁은 타일은 상하 배치. Desktop 네이티브 뷰/데모 화면은 논리 해상도를 유지하며 남은 영역에 비율 맞춤.
   - 우측 액션: `[CLOSE (x)]`. 재연결·새로고침은 터미널/데스크톱 패널 안에 있다.
 - **터미널 패널 (Terminal Pane)**:
   - `@xterm/xterm` 기반 캔버스/DOM 렌더러.
   - 다크 테마: 배경 `#09090B`, 텍스트 `#E4E4E7`, 커서 스위스 레드 `#E53935`.
-  - WebSocket PTY 직접 연결 또는 SSE 인터랙티브 실행기 연동.
+  - 제한된 Electron IPC를 통한 WebSocket PTY 또는 SSE 인터랙티브 실행기 연동.
 - **데스크톱 화면 패널 (Desktop Screen Pane)**:
-  - **Live Stream Iframe**: `https://dashboard.instabox.sh/desktop/{id}#token=...` 서명 링크를 `iframe`으로 임베딩.
+  - **Live Stream View**: `https://dashboard.instabox.sh/desktop/{id}#token=...` 서명 링크를 격리된 Electron `WebContentsView`에 최상위 문서로 표시. 프레임 정책을 우회하지 않는다.
   - 상단 컨트롤 바:
     - 화면 해상도: `1280x800` / `1920x1080`.
     - 모드 전환: `[WATCH ONLY]` vs `[CONTROL TAKEOVER]` (마우스/키보드 실시간 조작).

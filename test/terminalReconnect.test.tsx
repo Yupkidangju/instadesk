@@ -41,7 +41,7 @@ describe('PTY retry', () => {
       isDesktop: true, openTerminal, closeTerminal,
       closeAll: vi.fn(), closeProfile: vi.fn(), sendTerminal: vi.fn(), resizeTerminal: vi.fn(),
       onTerminalEvent: vi.fn().mockReturnValue(() => {}),
-    } as DesktopBridge;
+    } as unknown as DesktopBridge;
     vi.spyOn(instaboxClient, 'getTerminalWebSocketUrl').mockResolvedValue({
       url: 'wss://api.instabox.sh/v1/terminal',
       protocols: ['instabox-terminal.v1', 'instabox-access-token.ok'],
@@ -71,7 +71,7 @@ describe('PTY retry', () => {
       resizeTerminal: vi.fn(),
       closeProfile: vi.fn(),
       onTerminalEvent: vi.fn().mockReturnValue(() => {}),
-    } as DesktopBridge;
+    } as unknown as DesktopBridge;
     vi.spyOn(instaboxClient, 'getTerminalWebSocketUrl').mockResolvedValue({
       url: 'wss://connect.instabox.sh/v1/terminal?ticket=ok',
       protocols: ['instabox-terminal.v1', 'instabox-access-token.ok'],

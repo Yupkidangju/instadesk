@@ -1,5 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { TerminalEvent, TerminalOpenRequest } from './terminalGateway';
+import type { DesktopViewBounds, DesktopViewRequest } from './desktopViewPolicy';
+import type { DesktopViewEvent } from './desktopViewGateway';
 
 contextBridge.exposeInMainWorld('instadeskDesktop', Object.freeze({
   isDesktop: true,
@@ -13,5 +15,13 @@ contextBridge.exposeInMainWorld('instadeskDesktop', Object.freeze({
     const listener = (_event: Electron.IpcRendererEvent, value: TerminalEvent) => callback(value);
     ipcRenderer.on('terminal:event', listener);
     return () => ipcRenderer.removeListener('terminal:event', listener);
+  },
+  openDesktopView: (request: DesktopViewRequest): Promise<void> => ipcRenderer.invoke('desktop:open', request),
+  updateDesktopView: (id: string, bounds: DesktopViewBounds, zoom: number): Promise<void> => ipcRenderer.invoke('desktop:update', id, bounds, zoom),
+  closeDesktopView: (id: string): Promise<void> => ipcRenderer.invoke('desktop:close', id),
+  onDesktopEvent: (callback: (event: DesktopViewEvent) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, value: DesktopViewEvent) => callback(value);
+    ipcRenderer.on('desktop:event', listener);
+    return () => ipcRenderer.removeListener('desktop:event', listener);
   },
 }));
