@@ -27,6 +27,6 @@ Pages의 앱은 실제 키를 등록할 때 `https://api.instabox.sh/v1/machines
 
 ## 운영 배포 상태와 남은 조건
 
-로컬 `wrangler whoami`는 사용자 Cloudflare 계정의 OAuth 로그인을 확인했다. 그러나 개인 Worker 게시 시 Cloudflare API가 **계정 이메일 인증 필요**(10034)로 거절했다. `wrangler deploy`는 종료 코드 1이므로 Worker URL이나 실 연결 성공을 주장하지 않는다. 사용자가 Cloudflare 이메일 인증을 완료한 뒤 같은 배포 명령을 재실행하고, 본인 Worker의 `/health`와 Pages 브라우저의 프록시 적용을 확인해야 한다.
+로컬 `wrangler whoami`는 사용자 Cloudflare 계정의 OAuth 로그인을 확인했다. 첫 게시 시 Cloudflare API가 **계정 이메일 인증 필요**(10034)로 거절했으나, 사용자가 인증을 완료한 뒤 `wrangler deploy --config worker/wrangler.jsonc`가 종료 코드 0으로 성공했다. Worker의 workers.dev URL은 방문자가 오용하지 않도록 공개 저장소 문서에는 기록하지 않았다. 첫 원격 `/health` 검사는 새 workers.dev 하위 도메인에서 TLS handshake 실패로 끝났으므로 **원격 Worker가 브라우저에서 사용 가능하다고 아직 판정하지 않는다.** DNS/인증서 상태를 재확인한 뒤 Pages 브라우저에서 프록시를 적용해야 한다.
 
 허가된 실제 InstaBox 키가 없어 운영 Worker의 인증 GET, 변경 요청, SSE, PTY WebSocket, Desktop iframe은 미검증이다. Worker가 정상 배포되어도 각 방문자는 자기 Worker를 명시적으로 적용해야 한다. Cloudflare 계정의 Free/Paid 플랜과 사용량은 각 운영자가 확인한다. [Cloudflare Workers 가격 안내](https://developers.cloudflare.com/workers/platform/pricing/), [WebSocket 프록시 동작](https://developers.cloudflare.com/workers/runtime-apis/response/).
