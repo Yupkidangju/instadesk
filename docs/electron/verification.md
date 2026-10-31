@@ -13,6 +13,8 @@
 | 2.0.2 직접 API | 포터블 앱의 `app://instadesk`에서 가짜 키로 머신 GET | 서버 `401 malformed_key`가 반환됨. CORS 오류 없음 |
 | GitHub Pages 종료 | `gh api -X DELETE repos/Yupkidangju/instadesk/pages` 후 GET | 삭제 성공, Pages API `404 Not Found`. GitHub 저장소는 보존 |
 | 개인 Worker 종료 | `wrangler delete instadesk-personal-bridge` 후 공개 `/health` | 삭제 성공, 기존 URL `404` |
+| GitHub 통합 | `main` fast-forward 후 `git push origin main` | 커밋 `114bd19`, 공개 저장소 푸시 성공 |
+| Windows CI | [실행 41234241620](https://github.com/Yupkidangju/instadesk/actions/runs/41234241620) | `npm ci`, Electron 설치, 타입·53 테스트, 감사, 패키징, `InstaDesk-win-x64` 아티팩트 업로드 모두 성공 |
 | 저장소 감사 | `npm install --package-lock-only --ignore-scripts` | 214 패키지, 취약점 0 |
 
 ## 진행 중인 실 서비스 검증
