@@ -24,9 +24,12 @@ Pages의 앱은 실제 키를 등록할 때 `https://api.instabox.sh/v1/machines
 | `wrangler deploy --dry-run` | 번들 성공, 약 5.24 KiB. 키 바인딩 없음; `ALLOWED_ORIGIN`만 있음 |
 | `wrangler dev --local` | 호환 날짜를 런타임이 지원하는 `2026-10-30`으로 조정한 뒤 실행. `/health` 200/정확한 Origin, Pages Origin preflight 204, 다른 Origin 403 |
 | 가짜 키의 로컬 Worker GET | 업스트림 `api.instabox.sh`까지 전달돼 401 `malformed_key`와 Pages용 CORS 헤더 반환. 실제 사용자 키는 사용하지 않음 |
+| 공개 Pages 배포 | [실행 41226658069](https://github.com/Yupkidangju/instadesk/actions/runs/41226658069)의 빌드·배포 성공. 공개 HTML과 JS/CSS HTTP 200. 공용 Worker URL을 내장하지 않음 |
 
 ## 운영 배포 상태와 남은 조건
 
-로컬 `wrangler whoami`는 사용자 Cloudflare 계정의 OAuth 로그인을 확인했다. 첫 게시 시 Cloudflare API가 **계정 이메일 인증 필요**(10034)로 거절했으나, 사용자가 인증을 완료한 뒤 `wrangler deploy --config worker/wrangler.jsonc`가 종료 코드 0으로 성공했다. Worker의 workers.dev URL은 방문자가 오용하지 않도록 공개 저장소 문서에는 기록하지 않았다. 첫 원격 `/health` 검사는 새 workers.dev 하위 도메인에서 TLS handshake 실패로 끝났으므로 **원격 Worker가 브라우저에서 사용 가능하다고 아직 판정하지 않는다.** DNS/인증서 상태를 재확인한 뒤 Pages 브라우저에서 프록시를 적용해야 한다.
+로컬 `wrangler whoami`는 사용자 Cloudflare 계정의 OAuth 로그인을 확인했다. 첫 게시 시 Cloudflare API가 **계정 이메일 인증 필요**(10034)로 거절했으나, 사용자가 인증을 완료한 뒤 `wrangler deploy --config worker/wrangler.jsonc`가 종료 코드 0으로 성공했다. Worker의 workers.dev URL은 공용 기본값으로 오인되지 않도록 공개 저장소 문서에는 기록하지 않았다. URL 비공개만으로 사용량 보호가 보장되는 것은 아니다. 새 하위 도메인의 첫 TLS handshake 오류는 이후 해소됐고, 실제 Worker의 `/health`는 200, Pages Origin preflight는 204, 다른 Origin preflight는 403, 가짜 키 GET은 업스트림 401과 Pages용 CORS 헤더를 반환했다.
 
-허가된 실제 InstaBox 키가 없어 운영 Worker의 인증 GET, 변경 요청, SSE, PTY WebSocket, Desktop iframe은 미검증이다. Worker가 정상 배포되어도 각 방문자는 자기 Worker를 명시적으로 적용해야 한다. Cloudflare 계정의 Free/Paid 플랜과 사용량은 각 운영자가 확인한다. [Cloudflare Workers 가격 안내](https://developers.cloudflare.com/workers/platform/pricing/), [WebSocket 프록시 동작](https://developers.cloudflare.com/workers/runtime-apis/response/).
+공개 Pages의 새 Chromium 세션에서 `/health` JSON을 CORS 오류 없이 읽고 KEY VAULT에서 사용자가 소유한 Worker를 명시적으로 적용했다. 가짜 키 `ibk_invalid_probe_only` 등록은 InstaBox의 `401 malformed_key`를 표시하면서 암호화된 프로필을 보존했다. 브라우저 localStorage에는 시험용 키 평문이 없었으며, 시험 종료 시 그 프로필을 브라우저 저장소에서 제거했다. 이는 **전송·오류 처리 경로** 검증이고 유효한 키의 VM 목록/제어 검증은 아니다.
+
+허가된 실제 InstaBox 키가 없어 운영 Worker의 **성공하는 인증 GET**, 변경 요청, SSE, PTY WebSocket, Desktop iframe은 미검증이다. Worker가 정상 배포되어도 각 방문자는 자기 Worker를 명시적으로 적용해야 한다. Cloudflare 계정의 Free/Paid 플랜과 사용량은 각 운영자가 확인한다. [Cloudflare Workers 가격 안내](https://developers.cloudflare.com/workers/platform/pricing/), [WebSocket 프록시 동작](https://developers.cloudflare.com/workers/runtime-apis/response/).

@@ -96,7 +96,7 @@ Pages가 `main /`의 개발용 HTML을 직접 제공해 빈 화면이 나왔다.
 
 - `worker/src/proxy.ts`는 `/instabox-api/v1/*`와 `/instabox-connect/*`를 두 고정 업스트림으로만 전달한다. Pages Origin, preflight, Bearer 헤더, 리다이렉트 거부, SSE 본문 스트리밍 및 WebSocket 업그레이드를 분리한다. Worker에는 키 저장소가 없다.
 - `worker/wrangler.jsonc`는 사용자별 Cloudflare 계정 배포용 템플릿이다. 앱에 공용 Worker URL을 내장하지 않는다. `GET /health`의 템플릿 식별자와 Origin을 키 전송 전에 확인한다.
-- KEY VAULT는 연결 확인 실패 때 암호화된 프로필을 보존하고 미검증 상태를 안내한다. 실제 운영 Worker/키로 REST·SSE·PTY·Desktop을 검증하기 전에는 기능 완료를 주장하지 않는다. 상세 증거는 `docs/audit/api_connectivity_results_2026-11-01.md`에 기록한다.
+- KEY VAULT는 연결 확인 실패 때 암호화된 프로필을 보존하고 미검증 상태를 안내한다. 개인 Worker 배포와 공개 Pages 브라우저의 `/health`·가짜 키 401 경로는 확인했다. 유효한 키로 REST·SSE·PTY·Desktop을 검증하기 전에는 기능 완료를 주장하지 않는다. 상세 증거는 `docs/audit/api_connectivity_results_2026-11-01.md`에 기록한다.
 
 ## Audit 1 수정 상태 (2026-11-01)
 
