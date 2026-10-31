@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-[#09090b] text-zinc-100 font-sans selection:bg-swiss-red selection:text-white;
+  }
+}
+
+/* Neo-Swiss Functional Styling */
+.neo-border {
+  border: 1px solid #27272a;
+}
+
+.neo-border-contrast {
+  border: 1px solid #3f3f46;
+}
+
+.neo-tag {
+  @apply font-mono text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 border border-zinc-700 bg-zinc-900;
+}
+
+.neo-btn {
+  @apply inline-flex items-center justify-center font-mono text-xs uppercase font-semibold tracking-wider px-3 py-1.5 transition-all duration-150 border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 hover:border-zinc-500 active:bg-zinc-950 disabled:opacity-40 disabled:cursor-not-allowed;
+}
+
+.neo-btn-primary {
+  @apply inline-flex items-center justify-center font-mono text-xs uppercase font-bold tracking-wider px-3 py-1.5 transition-all duration-150 border border-red-600 bg-swiss-red text-white hover:bg-red-600 hover:border-red-500 active:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #09090b;
+  border-left: 1px solid #18181b;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 0;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}
+
+/* xterm terminal container override */
+.xterm {
+  padding: 8px;
+}
+.xterm-viewport {
+  background-color: #09090b !important;
+}

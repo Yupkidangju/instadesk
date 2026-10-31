@@ -1,0 +1,150 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { cryptoVault } from '../src/services/cryptoVault';
+import { getApiBaseUrl, instaboxClient, setTrustedProxyOrigin } from '../src/services/instaboxClient';
+import { useAppStore } from '../src/store/useAppStore';
+
+let profileId: string;
+
+beforeEach(async () => {
+  cryptoVault.resetVault();
+  await cryptoVault.initializeVault('test-password');
+  profileId = await cryptoVault.addProfile('Test', 'ibk_test');
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  setTrustedProxyOrigin('');
+  cryptoVault.resetVault();
+});
+
+describe('Audit 1 network and session regressions', () => {
+  it('combines paginated machine inventory and rejects a repeated cursor', async () => {
+    const machine = (id: string) => ({ id, name: id });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ machines: [machine('a')], nextCursor: 'page 2' }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ machines: [machine('b')], nextCursor: null }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const result = await instaboxClient.listMachines(profileId, 'Test');
+    expect(result.map((item) => item.id)).toEqual(['a', 'b']);
+    expect(fetchMock.mock.calls[1][0]).toContain('cursor=page%202');
+    fetchMock.mockReset().mockImplementation(() => Promise.resolve(
+      new Response(JSON.stringify({ machines: [], nextCursor: 'same' }), { status: 200 })
+    ));
+    await expect(instaboxClient.listMachines(profileId)).rejects.toThrow('repeated machine cursor');
+  });
+
+  it('parses fragmented CRLF and multiline SSE and reports EOF without exit', async () => {
+    const encoder = new TextEncoder();
+    const response = (chunks: string[]) => new Response(new ReadableStream({
+      start(controller) {
+        chunks.forEach((chunk) => controller.enqueue(encoder.encode(chunk)));
+        controller.close();
+      },
+    }), { status: 200 });
+    const stdout: string[] = [];
+    const errors: string[] = [];
+    const exits: number[] = [];
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(response([
+      'event: stdout\r\ndata: {"data":"first"}\r',
+      '\n\r\nevent: stdout\r\ndata: second\r\ndata: line\r\n\r\n',
+      'event: exit\r\ndata: {"exitCode":0,"stdout":"","stderr":"","timedOut":false,"truncated":false}\r\n',
+    ])).mockResolvedValueOnce(response(['event: stdout\ndata: tail'])));
+    const run = () => instaboxClient.streamExec(profileId, 'm_1', { cmd: 'echo' },
+      (value) => stdout.push(value), () => {}, (value) => exits.push(value.exitCode), (error) => errors.push(error.message));
+    await run();
+    expect(stdout).toEqual(['first', 'second\nline']);
+    expect(exits).toEqual([0]);
+    await run();
+    expect(stdout.at(-1)).toBe('tail');
+    expect(errors).toEqual(['Exec stream ended without an exit event']);
+  });
+
+  it('reports a malformed SSE exit event as an error', async () => {
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('event: exit\ndata: {"exitCode":"bad"}\n\n'));
+        controller.close();
+      },
+    });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(stream, { status: 200 })));
+    const exits: number[] = [];
+    const errors: string[] = [];
+    await instaboxClient.streamExec(profileId, 'm_1', { cmd: 'echo' }, () => {}, () => {},
+      (result) => exits.push(result.exitCode), (error) => errors.push(error.message));
+    expect(exits).toEqual([]);
+    expect(errors).toEqual(['Malformed exec exit event']);
+  });
+
+  it('requires an HTTPS proxy origin and routes REST and WS through it', async () => {
+    expect(() => setTrustedProxyOrigin('http://proxy.example')).toThrow();
+    expect(() => setTrustedProxyOrigin('https://user:pass@proxy.example')).toThrow();
+    expect(() => setTrustedProxyOrigin('https://proxy.example/path')).toThrow();
+    setTrustedProxyOrigin('https://proxy.example');
+    expect(getApiBaseUrl()).toBe('https://proxy.example');
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      url: 'wss://connect.instabox.sh/v1/terminal?ticket=abc', token: 'abc', protocol: 'instabox-terminal.v1',
+    }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const ticket = await instaboxClient.getTerminalWebSocketUrl(profileId, 'm_1');
+    expect(fetchMock.mock.calls[0][0]).toBe('https://proxy.example/v1/machines/m_1/access');
+    expect(ticket.url).toBe('wss://proxy.example/v1/terminal?ticket=abc');
+  });
+
+  it('counts connection reservations, frees closed sessions, and clears real tiles on lock', () => {
+    const store = useAppStore.getState();
+    store.clearAllTiles();
+    for (let index = 0; index < 8; index++) expect(store.reserveSession(`tile-${index}`, profileId)).toBe(true);
+    expect(store.reserveSession('tile-8', profileId)).toBe(false);
+    expect(store.reserveSession('other-key', 'another-profile')).toBe(true);
+    store.releaseSession('tile-0');
+    expect(store.reserveSession('tile-8', profileId)).toBe(true);
+    store.addTile('m_1', profileId, 'terminal');
+    expect(useAppStore.getState().tiles).toHaveLength(1);
+    cryptoVault.lock();
+    expect(useAppStore.getState().tiles).toHaveLength(0);
+    expect(Object.keys(useAppStore.getState().sessionStates)).toHaveLength(0);
+  });
+
+  it('closes registered PTY sockets and aborts in-flight fetches when locked', async () => {
+    const close = vi.fn();
+    instaboxClient.registerControlSocket({ close } as unknown as WebSocket);
+    const aborted: boolean[] = [];
+    vi.stubGlobal('fetch', vi.fn((_url: string, init: RequestInit) => new Promise((_resolve, reject) => {
+      init.signal?.addEventListener('abort', () => {
+        aborted.push(true);
+        reject(new DOMException('Aborted', 'AbortError'));
+      });
+    })));
+    const pending = instaboxClient.listMachines(profileId).catch((error) => error);
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalled());
+    cryptoVault.lock();
+    expect(close).toHaveBeenCalledOnce();
+    expect(aborted).toEqual([true]);
+    expect((await pending).name).toBe('AbortError');
+  });
+
+  it('uses the same channel teardown for automatic vault lock', async () => {
+    cryptoVault.resetVault();
+    await cryptoVault.initializeVault('test-password', 0.001);
+    const id = await cryptoVault.addProfile('Timed', 'ibk_test');
+    const close = vi.fn();
+    instaboxClient.registerControlSocket({ close } as unknown as WebSocket);
+    useAppStore.getState().addTile('m_1', id, 'terminal');
+    await vi.waitFor(() => expect(cryptoVault.isUnlocked()).toBe(false));
+    expect(close).toHaveBeenCalledOnce();
+    expect(useAppStore.getState().tiles).toHaveLength(0);
+  });
+
+  it('ends a cancelled demo exec without a late exit event', async () => {
+    const controller = new AbortController();
+    const exit = vi.fn();
+    const error = vi.fn();
+    const pending = instaboxClient.streamExec('demo-default', 'm_demo', { cmd: 'sleep' },
+      () => {}, () => {}, exit, error, controller.signal);
+    controller.abort();
+    await pending;
+    expect(exit).not.toHaveBeenCalled();
+    expect(error).toHaveBeenCalledOnce();
+    expect(error.mock.calls[0][0].name).toBe('AbortError');
+  });
+});

@@ -1,0 +1,10 @@
+node_modules/
+node_modules.audit1-backup/
+package-lock.audit1-backup.json
+dist/
+.playwright-cli/
+coverage/
+*.log
+.env
+.env.*
+!.env.example
