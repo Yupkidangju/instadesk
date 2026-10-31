@@ -185,7 +185,6 @@ export const useAppStore = create<AppStoreState>((set, get) => {
     addProfile: async (label: string, apiKey: string) => {
       const id = await cryptoVault.addProfile(label, apiKey);
       set({ profiles: cryptoVault.listProfiles() });
-      await get().refreshMachines();
       return id;
     },
 

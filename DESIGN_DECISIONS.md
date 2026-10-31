@@ -53,6 +53,9 @@
 - **로컬 개발용 Vite Dev Proxy 내장**:
   - `vite.config.ts`에 `/instabox-api`와 `/instabox-connect` 프록시를 설정한다. 로컬 개발에서 브라우저는 동일 origin으로 요청하지만 실 서비스의 인증·PTY/Desktop 호환성은 아직 검증되지 않았다.
 - 사용자 정의 프록시는 HTTPS origin만 허용하고, 적용 전 키 공개 범위를 명시적으로 확인한다. REST/SSE/티켓은 `{origin}/instabox-api/*`로 보낸다. 허용된 티켓 URL의 호스트가 `api.instabox.sh`이면 `wss://{proxy}/instabox-api/*`, `connect.instabox.sh`이면 `wss://{proxy}/instabox-connect/*`로 경로와 쿼리를 보존해 연결한다. 프록시 운영자가 두 업스트림과 WebSocket 업그레이드를 별도 중계해야 한다. 임의의 티켓 호스트는 거부한다.
+- 공개 배포는 사용자별 Worker를 전제로 한다. Worker는 정확한 Pages Origin만 CORS 허용하고 두 고정 업스트림만 전달하며 키를 저장하지 않는다. 공용 Worker를 앱 기본값으로 제공하면 방문자 키가 한 운영자에게 모이므로 채택하지 않는다. 브라우저 Origin 제한은 비브라우저 클라이언트의 인증 수단이 아니며, 실제 API 권한은 방문자 키에 달려 있다.
+- 키 등록 시 연결 실패를 키 오류로 간주해 암호화 기록을 삭제하지 않는다. 오류를 미검증으로 표시하고 사용자에게 프록시 적용/재시도를 안내한다.
+- Worker URL을 적용하기 전에 인증 헤더 없는 `/health` 확인으로 템플릿과 허용 Origin을 검사한다. URL 입력만으로 키를 전송하지 않는다. 이 검사는 운영자 신뢰를 대신하지 않으며 사용자가 소유·신뢰 확인하는 절차를 계속 요구한다.
 
 ---
 

@@ -18,16 +18,20 @@ export function getTrustedProxyOrigin(): string | null {
   return trustedProxyOrigin;
 }
 
+export function validateTrustedProxyOrigin(value: string): string {
+  const url = new URL(value.trim());
+  if (url.protocol !== 'https:' || url.username || url.password || url.pathname !== '/' || url.search || url.hash) {
+    throw new Error('Proxy must be an HTTPS origin without a path, credentials, query or fragment.');
+  }
+  return url.origin;
+}
+
 export function setTrustedProxyOrigin(value: string): string | null {
   if (!value.trim()) {
     trustedProxyOrigin = null;
     return null;
   }
-  const url = new URL(value.trim());
-  if (url.protocol !== 'https:' || url.username || url.password || url.pathname !== '/' || url.search || url.hash) {
-    throw new Error('Proxy must be an HTTPS origin without a path, credentials, query or fragment.');
-  }
-  trustedProxyOrigin = url.origin;
+  trustedProxyOrigin = validateTrustedProxyOrigin(value);
   return trustedProxyOrigin;
 }
 

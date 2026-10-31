@@ -5,6 +5,7 @@ import { ApiKeyModal } from '../src/components/modals/ApiKeyModal';
 import { BroadcastExecModal } from '../src/components/modals/BroadcastExecModal';
 import { cryptoVault } from '../src/services/cryptoVault';
 import { instaboxClient } from '../src/services/instaboxClient';
+import { getTrustedProxyOrigin, setTrustedProxyOrigin } from '../src/services/instaboxClient';
 import { useAppStore } from '../src/store/useAppStore';
 
 beforeEach(async () => {
@@ -16,6 +17,8 @@ beforeEach(async () => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+  setTrustedProxyOrigin('');
   useAppStore.getState().closeApiKeyModal();
   useAppStore.getState().closeBroadcastModal();
   cryptoVault.resetVault();
@@ -37,6 +40,53 @@ describe('Audit 3 security UI', () => {
     expect(screen.getByRole('alertdialog').textContent).toContain(secondId);
     fireEvent.click(screen.getByText('DELETE PROFILE'));
     await waitFor(() => expect(cryptoVault.listProfiles().map((profile) => profile.label)).toEqual(['First']));
+  });
+
+  it('keeps the encrypted key when the browser connection check fails', async () => {
+    const listMachines = vi.spyOn(instaboxClient, 'listMachines').mockRejectedValue(new TypeError('Failed to fetch'));
+    useAppStore.getState().openApiKeyModal();
+    render(React.createElement(ApiKeyModal));
+    fireEvent.change(screen.getByPlaceholderText('PROFILE LABEL (e.g., Personal Org, Production Agent)'), { target: { value: 'Personal' } });
+    fireEvent.change(screen.getByPlaceholderText('INSTABOX API KEY (ibk_...)'), { target: { value: 'ibk_test_only' } });
+    fireEvent.click(screen.getByText('ENCRYPT, SAVE & CHECK CONNECTION'));
+    await waitFor(() => expect(screen.getByText(/SAVED ENCRYPTED · CONNECTION UNVERIFIED/)).toBeDefined());
+    expect(listMachines).toHaveBeenCalledTimes(1);
+    expect(cryptoVault.listProfiles().map((profile) => profile.label)).toEqual(['Personal']);
+    expect(localStorage.getItem('instabox_deck_vault_v1')).not.toContain('ibk_test_only');
+  });
+
+  it('checks a personal Worker without a key before applying its origin', async () => {
+    const workerOrigin = 'https://personal.example';
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      ok: true, service: 'instadesk-personal-bridge', allowedOrigin: window.location.origin,
+    }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    useAppStore.getState().openApiKeyModal();
+    render(React.createElement(ApiKeyModal));
+    fireEvent.change(screen.getByPlaceholderText('https://your-cors-proxy.workers.dev (optional)'), { target: { value: workerOrigin } });
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByText('APPLY'));
+    await waitFor(() => expect(getTrustedProxyOrigin()).toBe(workerOrigin));
+    expect(fetchMock.mock.calls[0][0]).toBe(`${workerOrigin}/health`);
+    expect(fetchMock.mock.calls[0][1].credentials).toBe('omit');
+    expect(fetchMock.mock.calls[0][1].headers).toBeUndefined();
+  });
+
+  it('does not activate a Worker whose health identity is wrong', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      ok: true, service: 'other-service', allowedOrigin: window.location.origin,
+    }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    useAppStore.getState().openApiKeyModal();
+    render(React.createElement(ApiKeyModal));
+    fireEvent.change(screen.getByPlaceholderText('https://your-cors-proxy.workers.dev (optional)'), {
+      target: { value: 'https://unrelated.example' },
+    });
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByText('APPLY'));
+    await waitFor(() => expect(screen.getByText(/Worker identity or allowed site origin does not match/)).toBeDefined());
+    expect(getTrustedProxyOrigin()).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('clears broadcast command and output on vault lock, including after reopening', async () => {

@@ -92,6 +92,12 @@ D:/web/instadesk/
 
 Pages가 `main /`의 개발용 HTML을 직접 제공해 빈 화면이 나왔다. GitHub Pages 게시 소스를 Actions로 변경하고 기존 수동 배포 워크플로가 생성한 `dist/` artifact를 배포했다. 공개 URL의 빌드 자산과 데모 VM 4대 렌더링을 확인했다. 상세 증거는 `docs/audit/pages_deployment_2026-11-01.md`; 실 API 연결은 미검증이다.
 
+## 개인 Worker 연결 경로 (2026-11-01)
+
+- `worker/src/proxy.ts`는 `/instabox-api/v1/*`와 `/instabox-connect/*`를 두 고정 업스트림으로만 전달한다. Pages Origin, preflight, Bearer 헤더, 리다이렉트 거부, SSE 본문 스트리밍 및 WebSocket 업그레이드를 분리한다. Worker에는 키 저장소가 없다.
+- `worker/wrangler.jsonc`는 사용자별 Cloudflare 계정 배포용 템플릿이다. 앱에 공용 Worker URL을 내장하지 않는다. `GET /health`의 템플릿 식별자와 Origin을 키 전송 전에 확인한다.
+- KEY VAULT는 연결 확인 실패 때 암호화된 프로필을 보존하고 미검증 상태를 안내한다. 실제 운영 Worker/키로 REST·SSE·PTY·Desktop을 검증하기 전에는 기능 완료를 주장하지 않는다. 상세 증거는 `docs/audit/api_connectivity_results_2026-11-01.md`에 기록한다.
+
 ## Audit 1 수정 상태 (2026-11-01)
 
 - `spec.md`와 `DESIGN_DECISIONS.md`의 정적 배포/보안 계약을 우선 수정했다. `BUILD_GUIDE.md`와 `README.md`에 `/instadesk/` 프로젝트 사이트, 수동 Pages 배포, 실 API 검증 필요성을 기록했다.

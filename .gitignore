@@ -3,6 +3,7 @@ node_modules.*/
 package-lock.audit1-backup.json
 dist/
 .playwright-cli/
+.wrangler/
 coverage/
 *.log
 .env

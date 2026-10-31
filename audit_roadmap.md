@@ -34,3 +34,4 @@
   - 정적 외부 도메인에서 실 API 사용에는 서비스의 Origin 허용 또는 사용자가 신뢰하는 HTTPS 프록시가 필요하다. 동봉 MV3 규칙은 비활성화됐다.
   - 조건: 최종 Pages URL에서 허가된 키와 운영 프록시로 REST/SSE/PTY/Desktop을 검증한다. 로컬 개발 프록시는 배포 대안이 아니다.
 - **Pages 배포**: 2026-11-01 GitHub Actions 빌드·배포와 실제 URL의 JS/CSS·데모 흐름을 확인했다. 실 API/PTY/Desktop 게이트는 별도로 HOLD다. 증거: `docs/audit/pages_deployment_2026-11-01.md`.
+- **개인 Worker**: 각 방문자가 자기 Cloudflare 계정에 배포해야 한다. `/health`·Pages Origin·고정 업스트림·키 미저장·SSE/WS 검증을 `docs/audit/api_connectivity_results_2026-11-01.md`에 추적한다. 모의/로컬 Worker 성공은 운영 Worker 실 연결 PASS가 아니다.

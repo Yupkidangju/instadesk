@@ -50,6 +50,8 @@ GitHub Pages는 저장소의 Pages 설정에서 GitHub Actions를 소스로 선�
 
 현재 `extension/`의 전역 헤더 변조 규칙은 보안상 비활성화했습니다. 설치해도 API 연결 기능을 제공하지 않습니다. 실제 연결에는 upstream Origin 허용 또는 신뢰하는 HTTPS 프록시가 필요합니다. 프록시는 `/instabox-api/*`를 `https://api.instabox.sh/*`로, `/instabox-connect/*`를 `https://connect.instabox.sh/*`로 중계하고 두 경로의 WebSocket 업그레이드를 지원해야 합니다. 운영 프록시의 실 동작은 아직 검증되지 않았습니다.
 
+공개 사이트 방문자는 각자 [개인 Worker 배포 가이드](worker/README.md)에 따라 **자기 Cloudflare 계정**에 프록시를 배포하고, 앱의 KEY VAULT에서 그 Worker의 HTTPS origin을 적용합니다. 앱에는 공용 Worker 주소가 없습니다. API 키는 Worker에 설정하지 않습니다. Worker 운영자는 요청 중 평문 키를 처리하므로 자신이 운영하거나 명시적으로 신뢰하는 Worker만 사용하세요. 네트워크 오류가 나더라도 암호화된 키는 자동 삭제되지 않으며, 프록시 적용 후 새로고침으로 다시 확인할 수 있습니다.
+
 최종 Pages URL에서 허가된 테스트 키로 REST GET/변경, SSE, PTY WebSocket, Desktop 및 잠금/재연결을 별도로 검증해야 합니다. 외부 탭에서 연 Desktop은 앱에서 원격으로 취소할 수 없습니다.
 
 ---
