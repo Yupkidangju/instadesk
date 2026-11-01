@@ -5,7 +5,6 @@ const valid = () => ({
   id: 'desktop-p1-m1', profileId: 'p1',
   url: 'https://dashboard.instabox.sh/desktop/view#signed-token',
   bounds: { x: 400, y: 220, width: 640, height: 400 },
-  zoom: 0.5,
 });
 
 describe('desktop view boundary', () => {
@@ -21,6 +20,6 @@ describe('desktop view boundary', () => {
       'https://dashboard.instabox.sh:444/desktop/view',
     ]) expect(() => validateDesktopViewRequest({ ...valid(), url })).toThrow();
     expect(() => validateDesktopViewRequest({ ...valid(), bounds: { x: -1, y: 0, width: 640, height: 400 } })).toThrow();
-    expect(() => validateDesktopViewRequest({ ...valid(), zoom: 0 })).toThrow();
+    expect(() => validateDesktopViewRequest({ ...valid(), bounds: { x: 0, y: 0, width: Number.NaN, height: 400 } })).toThrow();
   });
 });

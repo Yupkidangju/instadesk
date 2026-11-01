@@ -50,7 +50,7 @@ describe('native desktop view', () => {
       machineId: 'm_1', profileId: 'p1', viewOnly: true, onViewOnlyChange: vi.fn(),
     }));
     await waitFor(() => expect(openDesktopView).toHaveBeenCalledWith(expect.objectContaining({
-      url: signedUrl, bounds: { x: 300, y: 200, width: 640, height: 400 }, zoom: 0.5,
+      url: signedUrl, bounds: { x: 300, y: 200, width: 640, height: 400 },
     })));
     expect(screen.queryByTitle('Desktop Stream m_1')).toBeNull();
     expect(updateDesktopView).toHaveBeenCalled();

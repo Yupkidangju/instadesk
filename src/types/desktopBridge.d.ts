@@ -16,9 +16,8 @@ export interface DesktopBridge {
     profileId: string;
     url: string;
     bounds: { x: number; y: number; width: number; height: number };
-    zoom: number;
   }): Promise<void>;
-  updateDesktopView(id: string, bounds: { x: number; y: number; width: number; height: number }, zoom: number): Promise<void>;
+  updateDesktopView(id: string, bounds: { x: number; y: number; width: number; height: number }): Promise<void>;
   closeDesktopView(id: string): Promise<void>;
   onDesktopEvent(callback: (event: { id: string; type: 'loaded' | 'error' }) => void): () => void;
 }

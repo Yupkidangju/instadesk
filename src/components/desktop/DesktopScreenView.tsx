@@ -57,7 +57,6 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
     const y = Math.max(0, Math.round(rect.top + (rect.height - fitted.height) / 2));
     return { x, y, width: Math.max(1, Math.round(fitted.width)), height: Math.max(1, Math.round(fitted.height)) };
   };
-  const zoom = Math.max(0.25, Math.min(5, fitted.scale));
 
   useEffect(() => {
     const element = viewportRef.current;
@@ -115,7 +114,7 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
       setNativeStatus(event.type === 'loaded' ? 'loaded' : 'error');
       if (event.type === 'error') void bridge.closeDesktopView(viewId);
     });
-    void bridge.openDesktopView({ id: viewId, profileId, url: streamUrl, bounds, zoom })
+    void bridge.openDesktopView({ id: viewId, profileId, url: streamUrl, bounds })
       .catch(() => { if (active) setNativeStatus('error'); });
     return () => {
       active = false;
@@ -129,7 +128,7 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
     if (!bridge || !streamUrl || modalOpen || profileId.startsWith('demo-')) return;
     const update = () => {
       const bounds = viewBounds();
-      if (bounds) void bridge.updateDesktopView(viewId, bounds, zoom);
+      if (bounds) void bridge.updateDesktopView(viewId, bounds);
     };
     update();
     window.addEventListener('resize', update);
@@ -138,7 +137,7 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update, true);
     };
-  }, [streamUrl, viewId, modalOpen, fitted.width, fitted.height, zoom]);
+  }, [streamUrl, viewId, modalOpen, fitted.width, fitted.height]);
 
   // 데스크톱 시작 (Xvfb + Xfce + Chromium)
   const handleStartDesktop = async () => {

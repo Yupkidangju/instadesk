@@ -81,9 +81,9 @@ function createWindow(): void {
     ownRenderer(event);
     desktops.open(request);
   });
-  ipcMain.handle('desktop:update', (event, id: string, bounds: DesktopViewBounds, zoom: number) => {
+  ipcMain.handle('desktop:update', (event, id: string, bounds: DesktopViewBounds) => {
     ownRenderer(event);
-    desktops.update(id, bounds, zoom);
+    desktops.update(id, bounds);
   });
   ipcMain.handle('desktop:close', (event, id: string) => {
     ownRenderer(event);

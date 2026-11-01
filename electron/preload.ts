@@ -17,7 +17,7 @@ contextBridge.exposeInMainWorld('instadeskDesktop', Object.freeze({
     return () => ipcRenderer.removeListener('terminal:event', listener);
   },
   openDesktopView: (request: DesktopViewRequest): Promise<void> => ipcRenderer.invoke('desktop:open', request),
-  updateDesktopView: (id: string, bounds: DesktopViewBounds, zoom: number): Promise<void> => ipcRenderer.invoke('desktop:update', id, bounds, zoom),
+  updateDesktopView: (id: string, bounds: DesktopViewBounds): Promise<void> => ipcRenderer.invoke('desktop:update', id, bounds),
   closeDesktopView: (id: string): Promise<void> => ipcRenderer.invoke('desktop:close', id),
   onDesktopEvent: (callback: (event: DesktopViewEvent) => void): (() => void) => {
     const listener = (_event: Electron.IpcRendererEvent, value: DesktopViewEvent) => callback(value);

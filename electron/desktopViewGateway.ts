@@ -30,7 +30,6 @@ export class DesktopViewGateway {
     });
     view.setBackgroundColor('#050507');
     view.setBounds(this.roundBounds(request.bounds));
-    view.webContents.setZoomFactor(request.zoom);
     view.webContents.on('will-navigate', (event, url) => {
       if (!isDashboardUrl(url)) event.preventDefault();
     });
@@ -47,12 +46,11 @@ export class DesktopViewGateway {
     void view.webContents.loadURL(request.url).catch(() => this.emitIfCurrent(request.id, view, 'error'));
   }
 
-  update(id: string, bounds: DesktopViewBounds, zoom: number): void {
-    validateDesktopBounds(bounds, zoom);
+  update(id: string, bounds: DesktopViewBounds): void {
+    validateDesktopBounds(bounds);
     const view = this.views.get(id)?.view;
     if (!view) return;
     view.setBounds(this.roundBounds(bounds));
-    view.webContents.setZoomFactor(zoom);
   }
 
   close(id: string): void {

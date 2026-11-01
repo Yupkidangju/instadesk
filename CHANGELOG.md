@@ -5,6 +5,11 @@ All notable changes to the InstaBox Deck project will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.3] - 2026-11-01
+
+### Fixed
+- SPLIT의 실제 Desktop 스트림이 두 번 축소되지 않도록 네이티브 뷰의 zoom factor를 기본값으로 유지합니다.
+
 ## [2.0.2] - 2026-11-01
 
 ### Fixed
