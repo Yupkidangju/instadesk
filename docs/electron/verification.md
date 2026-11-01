@@ -15,6 +15,7 @@
 | 개인 Worker 종료 | `wrangler delete instadesk-personal-bridge` 후 공개 `/health` | 삭제 성공, 기존 URL `404` |
 | GitHub 통합 | `main` fast-forward 후 `git push origin main` | 커밋 `114bd19`, 공개 저장소 푸시 성공 |
 | Windows CI | [실행 41234241620](https://github.com/Yupkidangju/instadesk/actions/runs/41234241620) | `npm ci`, Electron 설치, 타입·53 테스트, 감사, 패키징, `InstaDesk-win-x64` 아티팩트 업로드 모두 성공 |
+| 2.0.3 GitHub 검증 | [실행 41255551697](https://github.com/Yupkidangju/instadesk/actions/runs/41255551697) | `main` 커밋 `86a1ad4`의 Windows x64 빌드·테스트·패키징·아티팩트 성공. 실 화면 배율 확인은 볼트 잠금 해제 대기 |
 | 저장소 감사 | `npm install --package-lock-only --ignore-scripts` | 214 패키지, 취약점 0 |
 
 ## 진행 중인 실 서비스 검증
