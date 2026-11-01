@@ -93,4 +93,4 @@
 
 ## 8. Decision 08: 서명 Desktop 링크의 최상위 뷰
 
-실 키로 발급된 Desktop 링크가 iframe에서 검게 표시됐다. 대시보드 응답은 `X-Frame-Options: DENY`와 `Content-Security-Policy: frame-ancestors 'none'`이므로 앱 프레임에 삽입할 수 없다. 보안 정책을 무력화하지 않고 Electron `WebContentsView`를 앱 안의 화면 영역에 배치해 서명 링크를 최상위 문서로 연다. 메인에서 URL·좌표를 제한하고, 격리된 뷰에는 preload와 Node 통합을 주지 않는다. 모달/볼트 잠금/프로필 삭제 시 닫는다. 실제 스트림·입력의 최종 수용은 사용자 VM 검증으로 결정한다.
+실 키로 발급된 Desktop 링크가 iframe에서 검게 표시됐다. 대시보드 응답은 `X-Frame-Options: DENY`와 `Content-Security-Policy: frame-ancestors 'none'`이므로 앱 프레임에 삽입할 수 없다. 보안 정책을 무력화하지 않고 Electron `WebContentsView`를 앱 안의 화면 영역에 배치해 서명 링크를 최상위 문서로 연다. 메인에서 URL·좌표를 제한하고, 격리된 뷰에는 preload와 Node 통합을 주지 않는다. 모달/볼트 잠금/프로필 삭제 시 닫는다. 실 스트림 영상과 화면 맞춤은 확인했으며 입력 제어는 별도 검증 대상이다.

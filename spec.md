@@ -1,7 +1,7 @@
 # InstaDesk 데스크톱 명세
 
 **Document Version:** 2.0.6
-**Status:** Windows x64 패키지·가짜 키 검증 완료; 유효한 실 API/PTY/Desktop 재검증 진행 중
+**Status:** Windows x64 패키지와 실 VM 목록·PTY·Desktop 표시 및 SPLIT 화면 맞춤 검증 완료; 변경 API·SSE·입력 제어는 미검증
 **Last Updated:** 2026-11-01  
 
 ---
