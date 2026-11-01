@@ -1,6 +1,6 @@
 # InstaDesk
 
-> 2.1.0 Linux x64·arm64 및 Windows x64 릴리스 준비 중. 기존 Windows 2.0.6 검증과 새 배포 계약은 [릴리스 계획](docs/electron/release_2_1_0_plan.md)에 기록합니다.
+> Windows x64·Linux x64·arm64의 CI 패키지·로드 검증 범위와 남은 조건은 [2.1.0 릴리스 검증](docs/electron/release_2_1_0_verification.md)에 기록합니다.
 
 Windows x64와 Linux x64·arm64에서 InstaBox VM을 여러 화면으로 관리하는 Electron 앱입니다. VM 목록, PTY 터미널, 명령 실행, 데스크톱 스트림, 데모 모드를 제공합니다. 터미널과 스트림의 구분선을 드래그하거나 화살표 키로 조절할 수 있으며 스트림은 화면비를 유지합니다.
 
@@ -8,7 +8,7 @@ Windows x64와 Linux x64·arm64에서 InstaBox VM을 여러 화면으로 관리�
 
 Windows는 `InstaDesk-2.1.0-win-x64.zip`을 압축 해제해 `InstaDesk.exe`를 실행합니다. Linux는 해당 아키텍처의 `InstaDesk-2.1.0-linux-{x64|arm64}.tar.gz`를 설치하고 `chrome-sandbox`를 root 소유·4755로 설정한 뒤 일반 사용자로 `InstaDesk`를 실행합니다. 서명·자동 업데이트는 없습니다. 정확한 설치 과정은 [BUILD_GUIDE.md](BUILD_GUIDE.md)를 따르세요.
 
-[GitHub Actions 세 아키텍처 빌드](https://github.com/Yupkidangju/instadesk/actions/workflows/desktop.yml)의 아티팩트는 CI 결과이며, 태그 `v2.1.0`이 세 빌드 게이트를 통과하면 GitHub Release에 세 파일과 SHA-256 목록을 게시합니다.
+[GitHub Release v2.1.0](https://github.com/Yupkidangju/instadesk/releases/tag/v2.1.0)에 세 아카이브와 `SHA256SUMS.txt`를 게시합니다. [GitHub Actions 빌드](https://github.com/Yupkidangju/instadesk/actions/workflows/desktop.yml) 아티팩트는 릴리스와 별도의 CI 산출물입니다.
 
 ## 키와 연결
 
