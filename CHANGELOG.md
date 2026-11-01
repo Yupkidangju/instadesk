@@ -5,6 +5,11 @@ All notable changes to the InstaBox Deck project will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.6] - 2026-11-01
+
+### Fixed
+- 서버 상태 해상도와 실제 framebuffer 비율이 달라도 원격 Desktop 뷰가 SPLIT 패널 전체를 사용하게 합니다.
+
 ## [2.0.5] - 2026-11-01
 
 ### Fixed

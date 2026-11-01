@@ -51,11 +51,13 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
   const fitted = fitDesktop(frameWidth, frameHeight, viewport.width, viewport.height);
   const viewBounds = () => {
     const rect = viewportRef.current?.getBoundingClientRect();
-    if (!rect || viewport.width < 1 || viewport.height < 1 || rect.width < 1 || rect.height < 1 ||
-        fitted.width < 1 || fitted.height < 1) return null;
-    const x = Math.max(0, Math.round(rect.left + (rect.width - fitted.width) / 2));
-    const y = Math.max(0, Math.round(rect.top + (rect.height - fitted.height) / 2));
-    return { x, y, width: Math.max(1, Math.round(fitted.width)), height: Math.max(1, Math.round(fitted.height)) };
+    if (!rect || viewport.width < 1 || viewport.height < 1 || rect.width < 1 || rect.height < 1) return null;
+    return {
+      x: Math.max(0, Math.round(rect.left)),
+      y: Math.max(0, Math.round(rect.top)),
+      width: Math.max(1, Math.round(rect.width)),
+      height: Math.max(1, Math.round(rect.height)),
+    };
   };
 
   useEffect(() => {
@@ -137,7 +139,7 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update, true);
     };
-  }, [streamUrl, viewId, modalOpen, fitted.width, fitted.height]);
+  }, [streamUrl, viewId, modalOpen, viewport.width, viewport.height]);
 
   // 데스크톱 시작 (Xvfb + Xfce + Chromium)
   const handleStartDesktop = async () => {
@@ -324,8 +326,10 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
             </button>
           </div>
         ) : streamUrl ? (
-          <div data-desktop-scale={fitted.scale.toFixed(3)} className="relative shrink-0 overflow-hidden border border-zinc-700"
-            style={{ width: fitted.width, height: fitted.height }}>
+          <div data-desktop-scale={profileId.startsWith('demo-') ? fitted.scale.toFixed(3) : 'native'}
+            className="relative shrink-0 overflow-hidden border border-zinc-700"
+            style={{ width: profileId.startsWith('demo-') ? fitted.width : '100%',
+              height: profileId.startsWith('demo-') ? fitted.height : '100%' }}>
           {profileId.startsWith('demo-') ? (
             /* 데모 모드 시뮬레이션 그래픽 뷰어 */
             <div className="w-full h-full p-2 flex flex-col items-center justify-center bg-zinc-950 font-mono text-xs text-zinc-300">

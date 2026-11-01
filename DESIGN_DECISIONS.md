@@ -85,6 +85,8 @@
 
 2.0.4 실 검증에서 생성 직후의 설정이 대시보드 탐색 시 다시 덮이는 것을 확인했다. `did-finish-load` 후 zoom factor를 1로 맞추는 시점이 필요하다.
 
+2.0.5 실 검증에서는 zoom factor가 1이 됐지만 상태 해상도 1280×800과 실제 framebuffer 1073×1038이 달랐다. 상태 해상도로 외곽을 551×344에 고정하면 실제 영상이 356×344로 작아진다. 원격 네이티브 뷰는 가용 패널 전체를 쓰고 대시보드가 실제 framebuffer를 맞추게 한다. 데모 화면의 `fitDesktop` 계약은 유지한다.
+
 ## 7. Decision 07: Electron 데스크톱 전환
 
 사용자가 공개 웹의 CORS/공용 프록시 신뢰 경계를 제거하고 설치형 Electron 앱으로 전면 전환하기로 결정했다. Windows x64를 첫 대상(가정)으로 삼고 기존 React UI와 로컬 암호화 볼트를 `app://instadesk`에 묶는다. REST/SSE는 Electron 메인의 고정 API 라우트, PTY는 메인의 WSS 연결과 제한된 IPC로 처리한다. 렌더러의 `webSecurity`를 끄거나 Node 통합을 켜는 방식은 채택하지 않는다. Desktop 표시 방식은 Decision 08로 보완했다. 기술 경계와 검증은 `docs/electron/architecture.md`에 기록한다. 검증된 데스크톱 대체물이 준비되면 Pages 사이트와 사용자 계정의 개인 Worker 게시를 제거한다.

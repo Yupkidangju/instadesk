@@ -1,6 +1,6 @@
 # InstaDesk 데스크톱 명세
 
-**Document Version:** 2.0.5
+**Document Version:** 2.0.6
 **Status:** Windows x64 패키지·가짜 키 검증 완료; 유효한 실 API/PTY/Desktop 재검증 진행 중
 **Last Updated:** 2026-11-01  
 
@@ -115,7 +115,7 @@ export interface LocalVaultStorage {
 ### 4.2 지원 화면과 분할 뷰
 - 최소 지원 폭: 390 CSS px. 1024px 미만에서는 노드 목록을 열고 닫는 서랍을 사용한다. 1280px 미만에서는 여러 타일을 세로로 쌓고 스크롤한다. 단일 타일은 그리드 설정과 관계없이 작업 영역 전폭을 쓴다.
 - 한 VM의 `SPLIT` 탭은 PTY 터미널과 Desktop 뷰어를 동시에 마운트한다. 타일의 가용 폭이 700px 이상이면 구분선을 좌우로 25~75% 범위에서 드래그·키보드 조절한다. 더 좁은 타일은 상하 배치한다.
-- Desktop 뷰어는 서버가 보고한 화면 크기 또는 선택한 기본 해상도를 논리 크기로 사용하고, 가용 영역의 너비·높이에 맞춰 원본 화면비를 유지하며 확대/축소한다. 외부 뷰 내부 렌더링은 실 서비스에서 별도 검증한다.
+- 실제 Desktop 뷰는 가용 패널 전체를 차지하고 대시보드가 실제 framebuffer의 화면비를 유지하며 영상을 맞춘다. 서버 상태가 보고한 해상도와 실제 framebuffer가 다를 수 있으므로 앱은 보고 해상도로 네이티브 뷰 높이를 제한하지 않는다. 데모 미리보기는 논리 크기를 `fitDesktop`으로 맞춘다.
 
 ### 4.3 Electron 보안·통신 경계
 - 렌더러는 `nodeIntegration: false`, `contextIsolation: true`, `sandbox: true`, `webSecurity: true`로 로컬 번들만 로드한다. 메인 프로세스는 고정 `https://api.instabox.sh` REST/SSE와 허용된 `wss://api.instabox.sh` 또는 `wss://connect.instabox.sh` PTY만 연결한다.

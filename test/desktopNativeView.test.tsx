@@ -29,12 +29,12 @@ describe('native desktop view', () => {
   it('opens the signed link as a separate view, updates bounds and closes behind a modal', async () => {
     vi.stubGlobal('ResizeObserver', class {
       constructor(private callback: ResizeObserverCallback) {}
-      observe() { this.callback([{ contentRect: { width: 640, height: 400 } } as ResizeObserverEntry], this as unknown as ResizeObserver); }
+      observe() { this.callback([{ contentRect: { width: 640, height: 600 } } as ResizeObserverEntry], this as unknown as ResizeObserver); }
       disconnect() {}
     });
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
-      x: 300, y: 200, left: 300, top: 200, right: 940, bottom: 600,
-      width: 640, height: 400, toJSON: () => ({}),
+      x: 300, y: 200, left: 300, top: 200, right: 940, bottom: 800,
+      width: 640, height: 600, toJSON: () => ({}),
     });
     vi.spyOn(instaboxClient, 'desktopAction').mockResolvedValue({ installed: true, running: true, width: 1280, height: 800 });
     const signedUrl = 'https://dashboard.instabox.sh/desktop/m_1#signed-test';
@@ -50,7 +50,7 @@ describe('native desktop view', () => {
       machineId: 'm_1', profileId: 'p1', viewOnly: true, onViewOnlyChange: vi.fn(),
     }));
     await waitFor(() => expect(openDesktopView).toHaveBeenCalledWith(expect.objectContaining({
-      url: signedUrl, bounds: { x: 300, y: 200, width: 640, height: 400 },
+      url: signedUrl, bounds: { x: 300, y: 200, width: 640, height: 600 },
     })));
     expect(screen.queryByTitle('Desktop Stream m_1')).toBeNull();
     expect(updateDesktopView).toHaveBeenCalled();

@@ -1,6 +1,6 @@
-# Electron 2.0.5 검증 기록
+# Electron 2.0.6 검증 기록
 
-2026-11-01 · Windows x64. [2.0.0](verification_2_0_0.md)·[2.0.1](verification_2_0_1.md)·[2.0.2](verification_2_0_2.md)·[2.0.3](verification_2_0_3.md)·[2.0.4](verification_2_0_4.md) 검증 기록을 보존한다. 이전 감사 보고서는 `docs/audit/`에 그대로 있다.
+2026-11-01 · Windows x64. [2.0.0](verification_2_0_0.md)·[2.0.1](verification_2_0_1.md)·[2.0.2](verification_2_0_2.md)·[2.0.3](verification_2_0_3.md)·[2.0.4](verification_2_0_4.md)·[2.0.5](verification_2_0_5.md) 검증 기록을 보존한다. 이전 감사 보고서는 `docs/audit/`에 그대로 있다.
 
 | 대상 | 실행·관찰 | 결과 |
 |---|---|---|
@@ -8,7 +8,7 @@
 | 원인 대조 | [InstaBox OpenAPI](https://api.instabox.sh/v1/openapi.json) 및 dashboard HTTP 헤더 | 서비스 반환 `protocol`과 `instabox-access-token.<token>` 전달 필요. `X-Frame-Options: DENY`, CSP `frame-ancestors 'none'`가 iframe을 거부 |
 | 수정 회귀 | PTY 목적지·서브프로토콜·점 포함 티켓·세션 쿼리; Desktop URL/좌표 제한·네이티브 뷰·모달 종료·VM 일시 중단 안내·호스트 zoom 초기화 | `npm test`: 16 파일 54 테스트 통과. `npm run typecheck` 통과 |
 | 네이티브 뷰 스모크 | Electron `WebContentsView`에 dashboard의 잘못된 시험 링크를 최상위로 로드 | iframe 오류 대신 대시보드 자체의 `This desktop link is invalid` 화면이 앱 안에 표시됨. 유효한 링크는 아직 재검증 전 |
-| 새 빌드 | `npm run package:win` | `release/InstaDesk-2.0.5-win-x64/` 및 ZIP 생성. ZIP 158,395,041 bytes, SHA-256 `9fc08a7e0b71bcd6e03bd8c5ce08ffefe7434f95b4dffff07e41c129ff5ed14a` |
+| 새 빌드 | `npm run package:win` | `release/InstaDesk-2.0.6-win-x64/` 및 ZIP 생성. ZIP 158,395,066 bytes, SHA-256 `f2f15123ec82b094d4829866ce22a79d361406beeffb6242bceca62bfb0bdd9f` |
 | 중복 실행 | 2.0.2 EXE를 열린 상태에서 다시 실행 | 전후 메인 프로세스 수 1→1, 기존 창으로 복귀. 두 번째 프로세스가 닫히기 전 일시적 Chromium 캐시 잠금 메시지는 관찰됨 |
 | 2.0.2 직접 API | 포터블 앱의 `app://instadesk`에서 가짜 키로 머신 GET | 서버 `401 malformed_key`가 반환됨. CORS 오류 없음 |
 | GitHub Pages 종료 | `gh api -X DELETE repos/Yupkidangju/instadesk/pages` 후 GET | 삭제 성공, Pages API `404 Not Found`. GitHub 저장소는 보존 |
@@ -24,8 +24,9 @@
 - 사용자 실 키로 2.0.2의 `sleipnir-01` PTY가 `PTY LIVE`가 되었고 `pwd`가 `/data/home`을 반환했다. Desktop 최상위 뷰도 실제 화면을 표시했다. SPLIT에서 PTY와 Desktop 동시 연결을 확인했지만 영상이 뷰보다 작아 중복 zoom 제거 후 재검증한다. 이 과정에서 발급된 링크/키 값은 기록하지 않았다.
 - 2.0.3 실 SPLIT 뷰는 PTY/스트림을 표시했으나, 대시보드 뷰의 `devicePixelRatio`가 약 0.65로 남고 실제 canvas가 다시 축소됐다. 링크/키를 읽지 않고 CDP에서 뷰포트·canvas 치수만 확인했다. 새 뷰의 zoom factor를 1로 명시 설정하는 수정 후 재검증한다.
 - 2.0.4 실 SPLIT에서도 원격 뷰의 `devicePixelRatio`가 약 0.65였다. 생성 직후 설정은 탐색 중 호스트 배율로 덮였다. `did-finish-load` 이후 배율 초기화로 수정하고 재검증한다.
+- 2.0.5 실 SPLIT에서 `devicePixelRatio=1`, 네이티브 뷰 551×344, 실제 canvas bitmap 1073×1038·표시 356×344를 확인했다. 서버 상태의 1280×800과 실제 framebuffer가 달라 앱 외곽이 높이를 제한한다. 실제 뷰를 패널 전체 크기로 열고 대시보드의 화면비 맞춤을 사용하는 수정 후 재검증한다.
 - 실 PTY 화면에서 API 키 형식의 문자열이 출력된 것을 발견해 사용자에게 키 폐기·교체를 권고했다. 값은 문서·로그·커밋에 기록하지 않았다. 원격 셸 기록에 남았을 가능성은 사용자 확인이 필요하다.
-- 2.0.2를 종료·재실행한 뒤 암호화 볼트와 프로필 1개가 그대로 존재했고 잠금 상태로 시작했다. 2.0.3~2.0.5에서도 같은 암호화 프로필 1개가 보이고 잠금 상태로 시작한다. 평문 키는 읽지 않았다.
+- 2.0.2를 종료·재실행한 뒤 암호화 볼트와 프로필 1개가 그대로 존재했고 잠금 상태로 시작했다. 2.0.3~2.0.6에서도 같은 암호화 프로필 1개가 보이고 잠금 상태로 시작한다. 평문 키는 읽지 않았다.
 
 - 2.0.1에서 기존 2.0.0 볼트 프로필이 표시되지 않았고, 2.0.0 단독 재실행에서도 기록이 보이지 않았다. 병행 실행 중 저장소 충돌 가능성이 있으나 원인을 확정할 복구 자료가 없다. 사용자가 2.0.2에 키를 직접 등록한 뒤 재시작 보존을 확인한다. 키와 마스터 암호는 요청하거나 기록하지 않는다.
 - 2.0.1 패키지와 개발 앱의 병행 실행에서 Chromium 캐시 잠금 오류가 관찰됐다. 이후 단일 인스턴스 잠금을 코드에 추가했으며 최종 새 패키지에 포함하고 네이티브로 확인한다.
