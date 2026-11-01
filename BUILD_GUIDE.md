@@ -18,7 +18,7 @@ npm run desktop:dev
 npm run package:win
 ```
 
-`release/InstaDesk-2.0.3-win-x64/`와 같은 이름의 ZIP이 생깁니다. 스크립트는 기존 같은 이름의 산출물을 덮어쓰지 않습니다. 버전을 변경하거나 기존 산출물을 별도로 보관한 뒤 다시 실행하세요. ZIP을 압축 해제해 `InstaDesk.exe`를 실행합니다. 사용자 볼트는 실행 폴더가 아닌 Windows의 앱 사용자 데이터 영역에 저장됩니다. 설치 프로그램, 코드 서명, 자동 업데이트는 포함되지 않습니다.
+`release/InstaDesk-2.0.4-win-x64/`와 같은 이름의 ZIP이 생깁니다. 스크립트는 기존 같은 이름의 산출물을 덮어쓰지 않습니다. 버전을 변경하거나 기존 산출물을 별도로 보관한 뒤 다시 실행하세요. ZIP을 압축 해제해 `InstaDesk.exe`를 실행합니다. 사용자 볼트는 실행 폴더가 아닌 Windows의 앱 사용자 데이터 영역에 저장됩니다. 설치 프로그램, 코드 서명, 자동 업데이트는 포함되지 않습니다.
 
 패키지는 Electron 공식 Windows x64 바이너리, `resources/app`의 번들된 렌더러·메인·preload, `ws`, 라이선스만 담습니다. `electron.exe`와 `electron_wer.dll`은 각각 `InstaDesk.exe`, `InstaDesk_wer.dll`로 이름을 맞춥니다. ZIP의 SHA-256 및 네이티브 스모크 결과는 [검증 기록](docs/electron/verification.md)을 참조하세요.
 

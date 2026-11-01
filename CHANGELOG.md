@@ -5,6 +5,11 @@ All notable changes to the InstaBox Deck project will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.4] - 2026-11-01
+
+### Fixed
+- 이전 대시보드 호스트 배율을 상속한 SPLIT 스트림을 열 때 원격 뷰의 zoom factor를 1로 초기화합니다.
+
 ## [2.0.3] - 2026-11-01
 
 ### Fixed

@@ -30,6 +30,7 @@ export class DesktopViewGateway {
     });
     view.setBackgroundColor('#050507');
     view.setBounds(this.roundBounds(request.bounds));
+    view.webContents.setZoomFactor(1);
     view.webContents.on('will-navigate', (event, url) => {
       if (!isDashboardUrl(url)) event.preventDefault();
     });
