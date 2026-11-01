@@ -1,12 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { BrowserWindow } from 'electron';
 
-const { setZoomFactor } = vi.hoisted(() => ({ setZoomFactor: vi.fn() }));
+const { setZoomFactor, handlers } = vi.hoisted(() => ({
+  setZoomFactor: vi.fn(), handlers: new Map<string, () => void>(),
+}));
 vi.mock('electron', () => ({
   WebContentsView: class {
     webContents = {
       setZoomFactor,
-      on: vi.fn(),
+      on: vi.fn((event: string, handler: () => void) => { handlers.set(event, handler); }),
       setWindowOpenHandler: vi.fn(),
       loadURL: vi.fn().mockResolvedValue(undefined),
     };
@@ -28,6 +30,8 @@ describe('native dashboard scale', () => {
       url: 'https://dashboard.instabox.sh/desktop/m_1#signed-test',
       bounds: { x: 300, y: 200, width: 560, height: 350 },
     });
+    setZoomFactor.mockClear();
+    handlers.get('did-finish-load')?.();
     expect(setZoomFactor).toHaveBeenCalledWith(1);
   });
 });

@@ -38,7 +38,11 @@ export class DesktopViewGateway {
       if (!isDashboardUrl(url)) event.preventDefault();
     });
     view.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
-    view.webContents.on('did-finish-load', () => this.emitIfCurrent(request.id, view, 'loaded'));
+    view.webContents.on('did-finish-load', () => {
+      if (this.views.get(request.id)?.view !== view) return;
+      view.webContents.setZoomFactor(1);
+      this.emitIfCurrent(request.id, view, 'loaded');
+    });
     view.webContents.on('did-fail-load', (_event, code, _description, _url, isMainFrame) => {
       if (isMainFrame && code !== -3) this.emitIfCurrent(request.id, view, 'error');
     });
