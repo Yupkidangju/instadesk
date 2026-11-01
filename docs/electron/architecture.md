@@ -29,7 +29,7 @@ flowchart LR
 - BrowserWindow: `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`, `webSecurity: true`. 임의 웹 탐색·새 창·권한 요청을 기본 거부하고, 허용된 외부 Desktop 링크만 기본 브라우저로 연다. 제한된 contextBridge API만 노출한다.
 - API 키는 렌더러의 볼트에서 요청 시 복호화되어 로컬 메인 프로세스로 전달된다. 메인 프로세스는 요청을 끝내면 키를 보관하지 않는다. 이는 저장 암호화이며 실행 중 렌더러 악성 코드까지 방어한다는 주장은 하지 않는다.
 - 앱이 `app://instadesk` Origin을 독점하며 Pages의 다른 프로젝트 경로와 저장소를 공유하지 않는다. 정적 자산 프로토콜은 패키지의 빌드 디렉터리 밖 경로를 거부한다.
-- Windows EXE는 Electron 공식 수동 배포 구조(`resources/app`)로 앱을 묶어 코드 서명 없는 포터블 ZIP으로 검증한다. `@electron/packager`의 현재 개발 의존성 권고를 피한다. SmartScreen/서명 신뢰와 macOS/Linux 배포는 별도 출고 게이트다.
+- Windows x64와 Linux x64·arm64는 Electron 공식 수동 배포 구조(`resources/app`)로 앱을 묶는다. 각 네이티브 CI runner에서 Windows ZIP 또는 Linux tar.gz를 만들고 실행 아키텍처·자산·headless GUI 로드를 확인한다. `@electron/packager`의 현재 개발 의존성 권고를 피한다. 코드 서명/SmartScreen, 다른 Linux 배포판과 물리 ARM 기기는 별도 게이트다.
 
 ## 사용 흐름과 상태
 
@@ -40,4 +40,4 @@ flowchart LR
 
 ## 검증 게이트
 
-고정 목적지·경로 탈출/리다이렉트 거부, API 401과 정상 목록 모의 응답, SSE 청크/취소, PTY 연결/종료/잠금, 볼트 재시작 후 복호화, 네이티브 BrowserWindow 설정과 app Origin, Windows x64 패키지 실행, 데모 UI를 확인한다. 유효한 실제 키의 REST·PTY·Desktop 및 장시간 사용은 권한이 있을 때 별도로 확인한다.
+고정 목적지·경로 탈출/리다이렉트 거부, API 401과 정상 목록 모의 응답, SSE 청크/취소, PTY 연결/종료/잠금, 볼트 재시작 후 복호화, 네이티브 BrowserWindow 설정과 app Origin, 세 아키텍처의 패키지 로드·데모 UI를 확인한다. Windows x64의 실 키 목록·PTY·Desktop 화면 맞춤은 2.0.6에서 확인했다. Linux 실 키·실 ARM 기기·장시간 사용은 별도 조건이다.

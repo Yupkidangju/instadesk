@@ -94,3 +94,7 @@
 ## 8. Decision 08: 서명 Desktop 링크의 최상위 뷰
 
 실 키로 발급된 Desktop 링크가 iframe에서 검게 표시됐다. 대시보드 응답은 `X-Frame-Options: DENY`와 `Content-Security-Policy: frame-ancestors 'none'`이므로 앱 프레임에 삽입할 수 없다. 보안 정책을 무력화하지 않고 Electron `WebContentsView`를 앱 안의 화면 영역에 배치해 서명 링크를 최상위 문서로 연다. 메인에서 URL·좌표를 제한하고, 격리된 뷰에는 preload와 Node 통합을 주지 않는다. 모달/볼트 잠금/프로필 삭제 시 닫는다. 실 스트림 영상과 화면 맞춤은 확인했으며 입력 제어는 별도 검증 대상이다.
+
+## 9. Decision 09: 세 아키텍처 네이티브 CI와 태그 릴리스
+
+사용자가 Linux ARM64·AMD64와 Windows x64 릴리스를 요청했다. Electron 45.2.1의 각 사전 빌드 바이너리를 해당 아키텍처의 GitHub runner에서 설치하고 수동 `resources/app` 배포 구조를 유지한다. Linux는 실행 권한을 보존하는 tar.gz, Windows는 기존 ZIP을 사용한다. `main` CI의 세 결과를 확인한 커밋에 `v2.1.0` 태그를 붙이고, 태그 CI가 세 빌드/스모크를 다시 통과한 경우에만 Release 자산과 해시를 게시한다. 단일 x64 러너의 교차 컴파일만으로 ARM64를 통과 처리하지 않는다. 실제 ARM 기기 검증·코드 서명은 별도 범위다.

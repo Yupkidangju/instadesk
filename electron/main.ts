@@ -15,6 +15,7 @@ protocol.registerSchemesAsPrivileged([{
 
 const rendererRoot = path.join(app.getAppPath(), 'dist');
 const appOrigin = 'app://instadesk';
+const smokeMode = process.argv.includes('--smoke-test');
 const ownsInstance = app.requestSingleInstanceLock();
 if (!ownsInstance) app.quit();
 app.on('second-instance', () => {
@@ -25,6 +26,7 @@ app.on('second-instance', () => {
 
 function createWindow(): void {
   const window = new BrowserWindow({
+    show: !smokeMode,
     width: 1440,
     height: 900,
     minWidth: 390,
@@ -37,6 +39,7 @@ function createWindow(): void {
       nodeIntegration: false,
       sandbox: true,
       webSecurity: true,
+      backgroundThrottling: !smokeMode,
     },
   });
 
@@ -108,7 +111,36 @@ function createWindow(): void {
     }
     return { action: 'deny' };
   });
-  void window.loadURL(`${appOrigin}/index.html`);
+  const loading = window.loadURL(`${appOrigin}/index.html`);
+  if (!smokeMode) {
+    void loading;
+    return;
+  }
+  const watchdog = setTimeout(() => {
+    console.error('Desktop smoke timed out');
+    app.exit(1);
+  }, 20000);
+  void loading.then(async () => {
+    for (let attempt = 0; attempt < 50; attempt++) {
+      const rendered = await window.webContents.executeJavaScript(
+        "document.querySelector('#root')?.textContent?.includes('INSTABOX') === true",
+      );
+      if (rendered) {
+        clearTimeout(watchdog);
+        console.log('Desktop smoke passed');
+        app.exit(0);
+        return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    clearTimeout(watchdog);
+    console.error('Desktop renderer did not mount');
+    app.exit(1);
+  }).catch(() => {
+    clearTimeout(watchdog);
+    console.error('Desktop failed to load');
+    app.exit(1);
+  });
 }
 
 app.whenReady().then(() => {

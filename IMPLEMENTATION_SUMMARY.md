@@ -1,11 +1,11 @@
-# InstaDesk 2.0 구현 요약
+# InstaDesk 2.1.0 구현 요약
 
-2026-11-01 · Windows x64 Electron 포터블 앱. 기존 웹 구현 요약은 [보존본](docs/legacy/IMPLEMENTATION_SUMMARY.web-2026-11-01.md)에 있다.
+2026-11-01 · Windows x64·Linux x64·Linux arm64 Electron 포터블 앱. 기존 웹 구현 요약은 [보존본](docs/legacy/IMPLEMENTATION_SUMMARY.web-2026-11-01.md)에 있다.
 
 ## 구조
 
 ```text
-InstaDesk.exe
+InstaDesk.exe (Windows) / InstaDesk (Linux)
 └─ resources/app/
    ├─ dist/                  React, xterm, 스타일 번들
    ├─ dist-electron/         Electron main/preload 번들
@@ -18,7 +18,8 @@ InstaDesk.exe
 - `electron/apiGateway.ts`: `/instabox-api/v1/*`를 고정 `https://api.instabox.sh/v1/*`로 중계. 메서드·Bearer 형식·리다이렉트를 제한하고 SSE 본문을 스트리밍한다.
 - `electron/terminalGateway.ts`: 허용 InstaBox WSS 티켓만 연결하고 PTY 입출력·크기 변경·프로필/전체 종료를 관리한다.
 - `electron/preload.ts`와 `electron/main.ts`: 격리된 BrowserWindow 및 제한 IPC 브리지. 렌더러에 Node를 노출하지 않는다.
-- `scripts/build-electron.mjs`, `scripts/package-win.mjs`: 타입 검사·Vite/esbuild 번들, Electron 공식 바이너리 포터블 패키지 생성.
+- `scripts/build-electron.mjs`, `scripts/package-win.mjs`, `scripts/package-linux.mjs`: 타입 검사·Vite/esbuild 번들, 각 네이티브 아키텍처의 Electron 공식 바이너리 포터블 패키지 생성.
+- `.github/workflows/desktop.yml`: 세 아키텍처 타입·테스트·감사·패키지 로드 게이트와 `v2.1.0` 태그 Release 게시.
 
 ## 데이터 흐름
 

@@ -1,19 +1,19 @@
 # InstaDesk 데스크톱 명세
 
-**Document Version:** 2.0.6
-**Status:** Windows x64 패키지와 실 VM 목록·PTY·Desktop 표시 및 SPLIT 화면 맞춤 검증 완료; 변경 API·SSE·입력 제어는 미검증
+**Document Version:** 2.1.0-draft
+**Status:** Windows x64·Linux x64·Linux arm64 릴리스 계약; 2.0.6 Windows 실 기능 증거를 유지하며 Linux CI 검증 대기
 **Last Updated:** 2026-11-01  
 
 ---
 
 ## 1. 개요 및 목표 (Overview & Objectives)
 
-본 프로젝트는 Windows x64를 우선 대상으로 하는 Electron 데스크톱 앱이다. 기존 React 화면은 앱에 번들해 전용 `app://instadesk` Origin에서 실행한다. 사용자가 입력한 `instabox.sh` API 키(`ibk_...`)는 Web Crypto AES-256-GCM + PBKDF2로 앱 Origin의 localStorage에 암호화해 보관하고, 요청 때만 복호화한다. 실제 API와 PTY 연결은 Electron 메인 프로세스에서 고정 InstaBox 호스트로 직접 수행한다. 공용 Worker나 GitHub Pages는 런타임에 필요하지 않다.
+본 프로젝트는 Windows x64, Linux x64(AMD64), Linux arm64를 대상으로 하는 Electron 데스크톱 앱이다. 기존 React 화면은 앱에 번들해 전용 `app://instadesk` Origin에서 실행한다. 사용자가 입력한 `instabox.sh` API 키(`ibk_...`)는 Web Crypto AES-256-GCM + PBKDF2로 앱 Origin의 localStorage에 암호화해 보관하고, 요청 때만 복호화한다. 실제 API와 PTY 연결은 Electron 메인 프로세스에서 고정 InstaBox 호스트로 직접 수행한다. 공용 Worker나 GitHub Pages는 런타임에 필요하지 않다.
 
-사용자는 **네오스위스(Neo-Swiss) 인터내셔널 타이포그래피 스타일**의 정밀하고 대담한 그리드 인터페이스를 통해 복수의 Linux microVM 상태를 실시간 관제하고, 멀티 타일 분할 뷰를 통해 **실시간 인터랙티브 터미널(PTY WebSocket & SSE Exec)** 및 **그래픽 데스크톱 화면(Stream Iframe & VNC)**을 즉시 확인하고 원격 제어할 수 있습니다.
+사용자는 **네오스위스(Neo-Swiss) 인터내셔널 타이포그래피 스타일**의 정밀하고 대담한 그리드 인터페이스를 통해 복수의 Linux microVM 상태를 실시간 관제하고, 멀티 타일 분할 뷰를 통해 **실시간 인터랙티브 터미널(PTY WebSocket & SSE Exec)** 및 **그래픽 데스크톱 화면(격리된 뷰어)**을 즉시 확인하고 원격 제어할 수 있습니다.
 
 ### 핵심 성공 기준 (Success Criteria)
-1. **설치형 데스크톱 구동**: Windows x64의 로컬 실행 및 포터블 배포. 사용자는 앱에서 마스터 암호와 자기 API 키를 입력한다. 브라우저 CORS 우회 설정이나 Worker 설치는 요구하지 않는다. 데모 모드는 오프라인에서도 동작한다.
+1. **데스크톱 구동과 배포**: Windows x64 ZIP, Linux x64·arm64 tar.gz를 포터블로 배포한다. 사용자는 앱에서 마스터 암호와 자기 API 키를 입력한다. 브라우저 CORS 우회 설정이나 Worker 설치는 요구하지 않는다. 데모 모드는 오프라인에서도 동작한다. 세 아키텍처의 CI 패키지 로드 스모크와 GitHub Release 자산·해시를 확인한다.
 2. **소비 시점 복호화(On-demand Decryption) 보안 아키텍처**:
    - 전용 `app://instadesk` Origin의 `localStorage`에는 오직 암호화된 볼트 레코드(`ciphertext`, `salt`, `iv`)만 영구 저장.
    - 평문 키는 영구 상태로 메모리에 장기 보관되지 않고, 사용자가 입력한 마스터 비밀번호로 파생된 세션 키를 통해서만 API 호출 시점에 즉시 복호화되어 소비 후 가비지 컬렉션(GC).
@@ -35,7 +35,7 @@
 ## 2. 비목표 (Non-Goals)
 - 백엔드 중앙 집중형 사용자 DB 구축 (100% 클라이언트 로컬 저장 원칙).
 - GitHub Pages·Cloudflare Worker 기반 브라우저 실 API 배포. 기존 Pages 사이트와 개인 Worker 게시를 Electron 대체물이 검증된 뒤 제거한다.
-- 첫 배포의 macOS/Linux 패키지와 코드 서명. Windows x64 동작과 포터블 패키지가 우선이며 서명/타 OS는 별도 범위다.
+- macOS, Linux 32비트 ARMv7, Windows 32비트 x86 패키지와 코드 서명·자동 업데이트. Linux x64·arm64 및 Windows x64만 2.1.0 배포 대상이다.
 - `instabox.sh` 서비스 자체의 인프라 변경 (공식 API 및 WebSocket 규격을 그대로 수용).
 - 화려한 그라데이션, 스큐어모피즘, 불필요한 라운딩 등 네오스위스 디자인 철학에 어긋나는 장식적 요소 배제.
 
