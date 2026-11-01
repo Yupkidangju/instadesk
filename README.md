@@ -1,6 +1,6 @@
 # InstaDesk
 
-> Windows x64·Linux x64·arm64의 CI 패키지·로드 검증 범위와 남은 조건은 [2.1.0 릴리스 검증](docs/electron/release_2_1_0_verification.md)에 기록합니다.
+> [v2.1.0 공개 릴리스](https://github.com/Yupkidangju/instadesk/releases/tag/v2.1.0): Windows x64, Linux x64, Linux arm64. 검증 범위와 설치 조건은 [릴리스 검증](docs/electron/release_2_1_0_verification.md)에 있습니다.
 
 Windows x64와 Linux x64·arm64에서 InstaBox VM을 여러 화면으로 관리하는 Electron 앱입니다. VM 목록, PTY 터미널, 명령 실행, 데스크톱 스트림, 데모 모드를 제공합니다. 터미널과 스트림의 구분선을 드래그하거나 화살표 키로 조절할 수 있으며 스트림은 화면비를 유지합니다.
 

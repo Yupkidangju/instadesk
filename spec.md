@@ -1,7 +1,7 @@
 # InstaDesk 데스크톱 명세
 
 **Document Version:** 2.1.0
-**Status:** Windows x64·Linux x64·Linux arm64 네이티브 CI 패키지·로드 검증 완료; 태그 릴리스 게시와 물리 ARM 기기 검증은 별도
+**Status:** Windows x64·Linux x64·Linux arm64 네이티브 CI 패키지·로드 검증 및 `v2.1.0` 공개 릴리스 완료; 물리 ARM 기기·다른 배포판·실 서비스 변경 흐름은 미검증
 **Last Updated:** 2026-11-01  
 
 ---
