@@ -57,11 +57,21 @@ jobs:
           set -euo pipefail
           version=$(node -p "require('./package.json').version")
           name="InstaDesk-${version}-${{ matrix.target }}"
-          mkdir smoke
-          tar -xzf "release/${name}.tar.gz" -C smoke
-          test -x "smoke/${name}/InstaDesk"
-          file "smoke/${name}/InstaDesk"
-          xvfb-run -a "smoke/${name}/InstaDesk" --smoke-test
+          sudo install -d -m 0755 /opt/instadesk
+          sudo tar -xzf "release/${name}.tar.gz" -C /opt/instadesk
+          sudo chown -R root:root "/opt/instadesk/${name}"
+          sudo chmod 4755 "/opt/instadesk/${name}/chrome-sandbox"
+          test -x "/opt/instadesk/${name}/InstaDesk"
+          test -f "/opt/instadesk/${name}/LINUX_SETUP.md"
+          test "$(stat -c '%u:%a' "/opt/instadesk/${name}/chrome-sandbox")" = '0:4755'
+          binary_type=$(file -b "/opt/instadesk/${name}/InstaDesk")
+          echo "$binary_type"
+          if [ "${{ matrix.target }}" = 'linux-arm64' ]; then
+            grep -q 'ARM aarch64' <<< "$binary_type"
+          else
+            grep -q 'x86-64' <<< "$binary_type"
+          fi
+          xvfb-run -a "/opt/instadesk/${name}/InstaDesk" --smoke-test
       - uses: actions/upload-artifact@v4
         with:
           name: InstaDesk-${{ matrix.target }}

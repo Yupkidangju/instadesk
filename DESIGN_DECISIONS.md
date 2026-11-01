@@ -98,3 +98,5 @@
 ## 9. Decision 09: 세 아키텍처 네이티브 CI와 태그 릴리스
 
 사용자가 Linux ARM64·AMD64와 Windows x64 릴리스를 요청했다. Electron 45.2.1의 각 사전 빌드 바이너리를 해당 아키텍처의 GitHub runner에서 설치하고 수동 `resources/app` 배포 구조를 유지한다. Linux는 실행 권한을 보존하는 tar.gz, Windows는 기존 ZIP을 사용한다. `main` CI의 세 결과를 확인한 커밋에 `v2.1.0` 태그를 붙이고, 태그 CI가 세 빌드/스모크를 다시 통과한 경우에만 Release 자산과 해시를 게시한다. 단일 x64 러너의 교차 컴파일만으로 ARM64를 통과 처리하지 않는다. 실제 ARM 기기 검증·코드 서명은 별도 범위다.
+
+Ubuntu 24.04 네이티브 CI에서 일반 사용자 소유의 `chrome-sandbox`가 거부됨을 확인했다. Chromium sandbox를 끄는 방식은 채택하지 않는다. Linux 설치 경로 전체를 root 소유로 두고 helper에 4755를 설정해 일반 사용자로 앱을 실행한다. CI 스모크는 압축 해제한 아카이브에 같은 조건을 적용한다.

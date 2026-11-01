@@ -6,7 +6,7 @@ Windows x64와 Linux x64·arm64에서 InstaBox VM을 여러 화면으로 관리�
 
 ## 다운로드 및 실행
 
-Windows는 `InstaDesk-2.1.0-win-x64.zip`, Linux는 해당 아키텍처의 `InstaDesk-2.1.0-linux-{x64|arm64}.tar.gz`를 압축 해제해 `InstaDesk.exe` 또는 `InstaDesk`를 실행합니다. 포터블 패키지이며 서명·자동 업데이트는 없습니다. 빌드와 실행 과정은 [BUILD_GUIDE.md](BUILD_GUIDE.md)를 따르세요.
+Windows는 `InstaDesk-2.1.0-win-x64.zip`을 압축 해제해 `InstaDesk.exe`를 실행합니다. Linux는 해당 아키텍처의 `InstaDesk-2.1.0-linux-{x64|arm64}.tar.gz`를 설치하고 `chrome-sandbox`를 root 소유·4755로 설정한 뒤 일반 사용자로 `InstaDesk`를 실행합니다. 서명·자동 업데이트는 없습니다. 정확한 설치 과정은 [BUILD_GUIDE.md](BUILD_GUIDE.md)를 따르세요.
 
 [GitHub Actions 세 아키텍처 빌드](https://github.com/Yupkidangju/instadesk/actions/workflows/desktop.yml)의 아티팩트는 CI 결과이며, 태그 `v2.1.0`이 세 빌드 게이트를 통과하면 GitHub Release에 세 파일과 SHA-256 목록을 게시합니다.
 

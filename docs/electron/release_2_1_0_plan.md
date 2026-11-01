@@ -10,13 +10,13 @@
 | Linux AMD64 | `ubuntu-24.04` | `InstaDesk-2.1.0-linux-x64.tar.gz` | `InstaDesk` |
 | Linux ARM64 | `ubuntu-24.04-arm` | `InstaDesk-2.1.0-linux-arm64.tar.gz` | `InstaDesk` |
 
-Electron 45.2.1의 공식 사전 빌드 바이너리를 각 **네이티브 runner**에서 설치하고 `resources/app`에 번들된 앱과 `ws`만 넣는다. Linux tarball은 실행 비트를 보존한다. 실행 폴더 밖에 사용자 데이터가 기록되는 기존 계약을 유지한다.
+Electron 45.2.1의 공식 사전 빌드 바이너리를 각 **네이티브 runner**에서 설치하고 `resources/app`에 번들된 앱과 `ws`만 넣는다. Linux tarball은 실행 비트를 보존한다. Ubuntu 24.04에서 Chromium SUID helper가 일반 사용자 소유이면 보안상 실행을 중단하므로, Linux 배포는 `/opt/instadesk` 같은 root 소유 경로에 압축 해제하고 `chrome-sandbox`를 root 소유·4755로 설정하는 설치 절차가 필요하다. `--no-sandbox`는 릴리스 실행에 사용하지 않는다. 사용자 데이터는 설치 폴더 밖에 기록된다.
 
 ## 게이트와 게시 순서
 
 1. 문서/버전 계약을 먼저 갱신하고 Linux 패키징·스모크 검사를 구현한다.
 2. Windows x64 로컬 빌드·기존 실 서비스 흐름, 전체 단위 테스트·타입 검사·의존성 감사 확인.
-3. `main`의 세 runner CI에서 타입 검사, 전체 테스트, 감사, 패키징, 바이너리 아키텍처·구조 검사와 headless GUI 로드 스모크가 모두 통과해야 한다.
+3. `main`의 세 runner CI에서 타입 검사, 전체 테스트, 감사, 패키징, 바이너리 아키텍처·구조 검사와 headless GUI 로드 스모크가 모두 통과해야 한다. Linux 스모크는 추출된 앱을 root 소유로 만들고 sandbox helper에 4755를 설정한 뒤 정상 사용자로 실행한다.
 4. `v2.1.0` 태그를 같은 검증된 커밋에 푸시한다. 태그 CI가 세 아카이브를 다시 빌드하고 모두 성공하면 GitHub Release와 SHA-256 목록을 게시한다. 일부 실패 시 릴리스를 게시하지 않는다.
 5. 릴리스 자산·해시·CI 결과를 검증 기록에 남긴다. 이전 감사와 2.0.6 검증 기록은 보존한다.
 

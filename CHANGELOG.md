@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased] — 2.1.0
 
 ### Added
-- Linux x64·arm64 포터블 tar.gz, 세 아키텍처 CI 빌드 및 GitHub Release 배포를 준비합니다. 각 네이티브 runner의 패키지 로드 스모크를 릴리스 게이트로 둡니다.
+- Linux x64·arm64 tar.gz, 세 아키텍처 CI 빌드 및 GitHub Release 배포를 준비합니다. 각 네이티브 runner의 패키지 로드 스모크를 릴리스 게이트로 둡니다.
+- Ubuntu 24.04에서 Linux 아카이브의 Chromium sandbox helper는 root 소유·4755 설정이 필요합니다. 릴리스와 CI는 sandbox를 끄지 않습니다.
 
 ## [2.0.6] - 2026-11-01
 

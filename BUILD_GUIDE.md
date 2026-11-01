@@ -22,7 +22,7 @@ npm run package:win
 
 패키지는 Electron 공식 Windows x64 바이너리, `resources/app`의 번들된 렌더러·메인·preload, `ws`, 라이선스만 담습니다. `electron.exe`와 `electron_wer.dll`은 각각 `InstaDesk.exe`, `InstaDesk_wer.dll`로 이름을 맞춥니다. ZIP의 SHA-256 및 네이티브 스모크 결과는 [검증 기록](docs/electron/verification.md)을 참조하세요.
 
-## Linux x64·arm64 포터블 tar.gz
+## Linux x64·arm64 tar.gz 설치
 
 각 Linux 아키텍처의 **네이티브 머신**에서 실행합니다. x64 호스트에서 ARM64 바이너리로 교차 패키징하지 않습니다.
 
@@ -31,12 +31,15 @@ npm ci
 npm run desktop:install
 npm test
 npm run package:linux
-mkdir -p portable
-tar -xzf release/InstaDesk-2.1.0-linux-$(node -p 'process.arch').tar.gz -C portable
-./portable/InstaDesk-2.1.0-linux-$(node -p 'process.arch')/InstaDesk
+name="InstaDesk-2.1.0-linux-$(node -p 'process.arch')"
+sudo install -d -m 0755 /opt/instadesk
+sudo tar -xzf "release/${name}.tar.gz" -C /opt/instadesk
+sudo chown -R root:root "/opt/instadesk/${name}"
+sudo chmod 4755 "/opt/instadesk/${name}/chrome-sandbox"
+"/opt/instadesk/${name}/InstaDesk"
 ```
 
-`package:linux`은 `linux-x64` 또는 `linux-arm64` tar.gz를 생성하며 실행 권한을 보존합니다. Linux의 앱 사용자 데이터는 실행 폴더 밖의 사용자 프로필에 기록됩니다. 배포판별 시스템 라이브러리 차이와 물리 ARM 기기 실행은 별도로 확인해야 합니다.
+`package:linux`은 `linux-x64` 또는 `linux-arm64` tar.gz를 생성하며 실행 권한을 보존합니다. Ubuntu 24.04에서 `chrome-sandbox`는 root 소유·4755가 아니면 실행이 중단됩니다. 앱 디렉터리 전체를 root 소유로 두고 일반 사용자로 실행하세요. `--no-sandbox`는 릴리스 해결책이 아닙니다. Linux의 앱 사용자 데이터는 설치 폴더 밖의 사용자 프로필에 기록됩니다. 배포판별 시스템 라이브러리 차이와 물리 ARM 기기 실행은 별도로 확인해야 합니다.
 
 ## CI/CD와 릴리스
 

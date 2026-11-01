@@ -29,7 +29,7 @@ flowchart LR
 - BrowserWindow: `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`, `webSecurity: true`. 임의 웹 탐색·새 창·권한 요청을 기본 거부하고, 허용된 외부 Desktop 링크만 기본 브라우저로 연다. 제한된 contextBridge API만 노출한다.
 - API 키는 렌더러의 볼트에서 요청 시 복호화되어 로컬 메인 프로세스로 전달된다. 메인 프로세스는 요청을 끝내면 키를 보관하지 않는다. 이는 저장 암호화이며 실행 중 렌더러 악성 코드까지 방어한다는 주장은 하지 않는다.
 - 앱이 `app://instadesk` Origin을 독점하며 Pages의 다른 프로젝트 경로와 저장소를 공유하지 않는다. 정적 자산 프로토콜은 패키지의 빌드 디렉터리 밖 경로를 거부한다.
-- Windows x64와 Linux x64·arm64는 Electron 공식 수동 배포 구조(`resources/app`)로 앱을 묶는다. 각 네이티브 CI runner에서 Windows ZIP 또는 Linux tar.gz를 만들고 실행 아키텍처·자산·headless GUI 로드를 확인한다. `@electron/packager`의 현재 개발 의존성 권고를 피한다. 코드 서명/SmartScreen, 다른 Linux 배포판과 물리 ARM 기기는 별도 게이트다.
+- Windows x64와 Linux x64·arm64는 Electron 공식 수동 배포 구조(`resources/app`)로 앱을 묶는다. 각 네이티브 CI runner에서 Windows ZIP 또는 Linux tar.gz를 만들고 실행 아키텍처·자산·headless GUI 로드를 확인한다. Linux는 추출 후 root 소유 경로와 `chrome-sandbox` 4755 설치가 필요하며 sandbox를 끄지 않는다. `@electron/packager`의 현재 개발 의존성 권고를 피한다. 코드 서명/SmartScreen, 다른 Linux 배포판과 물리 ARM 기기는 별도 게이트다.
 
 ## 사용 흐름과 상태
 

@@ -13,7 +13,7 @@
 사용자는 **네오스위스(Neo-Swiss) 인터내셔널 타이포그래피 스타일**의 정밀하고 대담한 그리드 인터페이스를 통해 복수의 Linux microVM 상태를 실시간 관제하고, 멀티 타일 분할 뷰를 통해 **실시간 인터랙티브 터미널(PTY WebSocket & SSE Exec)** 및 **그래픽 데스크톱 화면(격리된 뷰어)**을 즉시 확인하고 원격 제어할 수 있습니다.
 
 ### 핵심 성공 기준 (Success Criteria)
-1. **데스크톱 구동과 배포**: Windows x64 ZIP, Linux x64·arm64 tar.gz를 포터블로 배포한다. 사용자는 앱에서 마스터 암호와 자기 API 키를 입력한다. 브라우저 CORS 우회 설정이나 Worker 설치는 요구하지 않는다. 데모 모드는 오프라인에서도 동작한다. 세 아키텍처의 CI 패키지 로드 스모크와 GitHub Release 자산·해시를 확인한다.
+1. **데스크톱 구동과 배포**: Windows x64 ZIP은 포터블로, Linux x64·arm64 tar.gz는 Chromium sandbox helper의 root 소유·4755 설정을 포함한 설치 방식으로 배포한다. 사용자는 앱에서 마스터 암호와 자기 API 키를 입력한다. 브라우저 CORS 우회 설정이나 Worker 설치는 요구하지 않는다. 데모 모드는 오프라인에서도 동작한다. 세 아키텍처의 CI 패키지 로드 스모크와 GitHub Release 자산·해시를 확인한다.
 2. **소비 시점 복호화(On-demand Decryption) 보안 아키텍처**:
    - 전용 `app://instadesk` Origin의 `localStorage`에는 오직 암호화된 볼트 레코드(`ciphertext`, `salt`, `iv`)만 영구 저장.
    - 평문 키는 영구 상태로 메모리에 장기 보관되지 않고, 사용자가 입력한 마스터 비밀번호로 파생된 세션 키를 통해서만 API 호출 시점에 즉시 복호화되어 소비 후 가비지 컬렉션(GC).

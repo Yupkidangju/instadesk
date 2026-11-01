@@ -25,6 +25,7 @@ for (const required of [
   path.join(root, 'dist-electron', 'main.cjs'),
   path.join(root, 'dist-electron', 'preload.cjs'),
   path.join(root, 'node_modules', 'ws', 'package.json'),
+  path.join(root, 'LINUX_SETUP.md'),
 ]) if (!fs.existsSync(required)) throw new Error(`Missing build input: ${required}`);
 
 const installedElectron = fs.readFileSync(path.join(electronDist, 'version'), 'utf8').trim().replace(/^v/, '');
@@ -48,6 +49,7 @@ fs.cpSync(path.join(root, 'node_modules', 'ws'), path.join(appDir, 'node_modules
   recursive: true, errorOnExist: true,
 });
 fs.copyFileSync(path.join(root, 'LICENSE'), path.join(appDir, 'LICENSE'));
+fs.copyFileSync(path.join(root, 'LINUX_SETUP.md'), path.join(packageDir, 'LINUX_SETUP.md'));
 fs.writeFileSync(path.join(appDir, 'package.json'), JSON.stringify({
   name: manifest.name,
   productName: manifest.productName,
