@@ -16,6 +16,7 @@
 | GitHub 통합 | `main` fast-forward 후 `git push origin main` | 커밋 `114bd19`, 공개 저장소 푸시 성공 |
 | Windows CI | [실행 41234241620](https://github.com/Yupkidangju/instadesk/actions/runs/41234241620) | `npm ci`, Electron 설치, 타입·53 테스트, 감사, 패키징, `InstaDesk-win-x64` 아티팩트 업로드 모두 성공 |
 | 2.0.3 GitHub 검증 | [실행 41255551697](https://github.com/Yupkidangju/instadesk/actions/runs/41255551697) | `main` 커밋 `86a1ad4`의 Windows x64 빌드·테스트·패키징·아티팩트 성공. 실 화면 배율 확인은 볼트 잠금 해제 대기 |
+| 2.0.5 GitHub 검증 | [실행 41279359874](https://github.com/Yupkidangju/instadesk/actions/runs/41279359874) | `main` 커밋 `2f6d43c`의 Windows x64 빌드·54개 테스트·패키징·아티팩트 성공. 실 화면 배율 재확인 대기 |
 | 저장소 감사 | `npm install --package-lock-only --ignore-scripts` | 214 패키지, 취약점 0 |
 
 ## 진행 중인 실 서비스 검증
@@ -29,6 +30,6 @@
 - 2.0.1에서 기존 2.0.0 볼트 프로필이 표시되지 않았고, 2.0.0 단독 재실행에서도 기록이 보이지 않았다. 병행 실행 중 저장소 충돌 가능성이 있으나 원인을 확정할 복구 자료가 없다. 사용자가 2.0.2에 키를 직접 등록한 뒤 재시작 보존을 확인한다. 키와 마스터 암호는 요청하거나 기록하지 않는다.
 - 2.0.1 패키지와 개발 앱의 병행 실행에서 Chromium 캐시 잠금 오류가 관찰됐다. 이후 단일 인스턴스 잠금을 코드에 추가했으며 최종 새 패키지에 포함하고 네이티브로 확인한다.
 - 사용자가 2.0.1 볼트를 등록·해제하면 실제 VM의 PTY 출력/입력과 Desktop 화면/상호작용을 확인한다. 일시 중단된 VM은 앱이 링크를 열지 않고 재개를 안내한다.
-- Pages와 개인 Worker 게시를 종료했다. 구 빌드의 영구 삭제 명령은 자동 승인 검토에서 `blocked by policy`로 거부됐다. 이후 경로·내용·실행 프로세스를 확인하고 Windows 파일 탐색기에서 2.0.0~2.0.3 폴더/ZIP과 임시 추출 폴더를 휴지통으로 옮겼다. `release/`에는 2.0.4 폴더와 ZIP만 남았다. 사용자 볼트 데이터는 건드리지 않았다.
+- Pages와 개인 Worker 게시를 종료했다. 구 빌드의 영구 삭제 명령은 자동 승인 검토에서 `blocked by policy`로 거부됐다. 이후 경로·내용·실행 프로세스를 확인하고 Windows 파일 탐색기에서 2.0.0~2.0.4 폴더/ZIP과 임시 추출 폴더를 휴지통으로 옮겼다. `release/`에는 2.0.5 폴더와 ZIP만 남았다. 사용자 볼트 데이터는 건드리지 않았다.
 
 현재 판정: **PTY·Desktop 실 서비스 재검증 중. 최종 수용 HOLD.**
