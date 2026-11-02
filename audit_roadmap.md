@@ -8,7 +8,7 @@
 | Windows 패키지 | x64 ZIP·EXE, 별도 위치 실행, 코드·의존성·라이선스 포함, 원본 Pages 데이터 자동 이전 없음 | ZIP 추출·실행 확인. 서명·다른 PC 미검증 |
 | 2.1.0 다중 아키텍처 릴리스 | Windows x64·Linux x64·Linux arm64 패키지, 네이티브 스모크, SHA-256, 3자산 Release | [태그 CI 41282601993](https://github.com/Yupkidangju/instadesk/actions/runs/41282601993) 4/4 성공, [v2.1.0 공개 릴리스](https://github.com/Yupkidangju/instadesk/releases/tag/v2.1.0) 자산·해시 검증 |
 | 감사 4 수정·2.1.1 | 사용자 입력 기준 잠금, PTY 준비/진단/제한 재시도, 볼트 v1→v2, 5대 PTY·SSE | [태그 CI 41419547837](https://github.com/Yupkidangju/instadesk/actions/runs/41419547837) 4/4 및 [v2.1.1 공개 릴리스](https://github.com/Yupkidangju/instadesk/releases/tag/v2.1.1) 확인. [finding별 결과](docs/audit/audit_report_4_remediation.md)에 5대 PTY·Broadcast 사용자 성공 보고 추가. 실제 오류 폴백·사용자 키 5개 보존은 HOLD |
-| 2.1.2 Desktop 스크롤 수정 | 여러 행/2열에서 네이티브 Desktop 뷰의 위치·가시성·휠 동작 | [수정 계약·검증](docs/electron/desktop_scroll_2_1_2.md): 로컬 90테스트·Windows 스모크, VM 5대 사용자 스크롤 수용 통과. 네이티브 CI 대기 |
+| 2.1.2 Desktop 스크롤 수정 | 여러 행/2열에서 네이티브 Desktop 뷰의 위치·가시성·휠 동작 | [수정 계약·검증](docs/electron/desktop_scroll_2_1_2.md): 로컬 90테스트·Windows 스모크, VM 5대 사용자 스크롤 수용 통과. [태그 CI 41442274079](https://github.com/Yupkidangju/instadesk/actions/runs/41442274079) 4/4 및 [v2.1.2 공개 릴리스](https://github.com/Yupkidangju/instadesk/releases/tag/v2.1.2) 자산·해시 확인 |
 | 실 서비스 기능 | 유효한 키로 REST 목록/변경, SSE exec, PTY, Desktop 뷰·제어 및 잠금/재연결 | 목록·PTY·Desktop 영상 및 2.0.6 SPLIT 화면 맞춤 확인. 2.1.1의 5대 PTY·Broadcast는 사용자 성공 보고. 변경 API·Desktop 입력·오류 폴백은 미검증 |
 | 게시 종료 | Pages 워크플로/게시 사이트 및 사용자 개인 Worker 제거, 감사 원본·GitHub 저장소 보존 | Pages API 404, Worker `/health` 404, `main` 푸시 및 Windows CI 통과 |
 

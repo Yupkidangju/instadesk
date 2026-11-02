@@ -32,6 +32,16 @@ Electron `WebContentsView`는 HTML 스크롤 컨테이너의 자식이 아니다
 - 수정: `WorkspaceGrid.tsx`가 스크롤 영역을 표시하고 `DesktopScreenView.tsx`는 실제 자리·영역 교차·스크롤 가능 여부를 계산한다. `desktopViewGateway.ts`는 `setVisible`로 뷰를 숨기고 재표시하며, 스크롤 영역이 있는 경우 일반 휠을 작업 영역으로 전달한다. 기존 뷰를 닫거나 스트림 URL을 새로 발급하지 않는다.
 - 로컬: `npm run typecheck` 성공, `npm test` 22파일 90테스트 통과, `npm audit --audit-level=high` 0건. `npm run package:win` 성공(로컬 ZIP 158,398,571 bytes, SHA-256 `7b68bdfd7b77329ea7c7f69dac37b0f50c868c8131fa3864556256dd7fb994b9`), 패키지 `--smoke-test` exit 0.
 - 실 화면: 사용자가 열린 2.1.2 Windows 앱에서 VM 5대·2열·오른쪽 Desktop 스크롤을 직접 확인하고 “통과. 해결됨”이라고 보고했다. 이는 사용자 수용 결과이며 별도 화면 캡처·좌표 추적·개별 휠 모드 측정은 하지 않았다.
-- 네이티브 CI/공개 자산: 진행 중. 모의 배치·IPC 테스트와 패키지 시작만으로 독립 재감사 PASS를 주장하지 않는다.
+- 네이티브 CI: [main CI 41441928931](https://github.com/Yupkidangju/instadesk/actions/runs/41441928931)에서 Windows x64·Linux x64·Linux arm64 패키지/로드 3/3 성공. [태그 CI 41442274079](https://github.com/Yupkidangju/instadesk/actions/runs/41442274079)에서 세 패키지와 release 작업 4/4 성공.
+- [v2.1.2 공개 릴리스](https://github.com/Yupkidangju/instadesk/releases/tag/v2.1.2)는 draft/prerelease가 아니며 3개 아카이브와 `SHA256SUMS.txt`가 업로드됐다. 세 아카이브 공개 URL HEAD 200, 체크섬 파일의 세 값과 GitHub 자산 digest 일치. 태그는 `48853a389b0ad79ed1fefbf8468ba8f7456431a2`를 가리킨다.
+
+| 공개 자산 | 크기(bytes) | SHA-256 |
+| --- | ---: | --- |
+| `InstaDesk-2.1.2-linux-arm64.tar.gz` | 125,131,853 | `63b2918a1fd67cb21352e8e67db343e026c8a1ab75a8e238a7bc4de5197195e4` |
+| `InstaDesk-2.1.2-linux-x64.tar.gz` | 124,049,940 | `21a866a0d44061ab850d66bf4f32594c1b766e1c76b9257ccc5d75f62ba31f5e` |
+| `InstaDesk-2.1.2-win-x64.zip` | 158,398,587 | `abdac35e5631a0ef24a280f2a3af08aae604c105604e945957e80f908adbe203` |
+| `SHA256SUMS.txt` | 294 | `fc944c3010f5182e6dfa41330957836e799d8717fbeb72a054de140d352af5e4` |
+
+로컬 Windows ZIP과 CI 공개 ZIP은 바이트 단위로 재현되지 않아 공개 다운로드 확인에는 공개 자산 해시를 사용한다. 사용자 수용 성공은 독립 화면 캡처/전체 보조 기술 감사·모든 원격 Desktop 휠 경로의 실측을 대신하지 않는다.
 
 Electron의 [View.setVisible](https://www.electronjs.org/docs/latest/api/view)과 [webContents `before-mouse-event`](https://www.electronjs.org/docs/latest/api/web-contents/) 계약을 확인했다. `WebContentsView`는 앱 창의 별도 네이티브 자식 뷰이며 HTML 스크롤 컨테이너의 `overflow`가 자동으로 적용된다는 근거는 없다.
