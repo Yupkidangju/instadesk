@@ -1,5 +1,7 @@
 # InstaDesk
 
+![InstaDesk with five VMs, live terminals, and desktop views / VM 5대와 실시간 터미널·데스크톱을 보여 주는 InstaDesk](docs/images/instadesk-overview.png)
+
 ## English
 
 **InstaDesk** is a desktop app for managing [InstaBox](https://instabox.sh) virtual machines with your own API key. Add a key, see the VMs available to its workspace, and work with terminals, desktops, and commands from one window.
