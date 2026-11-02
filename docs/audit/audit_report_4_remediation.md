@@ -37,9 +37,21 @@ Electron `userData`와 `sessionData`를 OS 사용자별 버전 없는 `InstaDesk
 | `git diff --check` | 성공 (Windows 줄끝 변환 경고만 출력) |
 | `npm run package:win` | Windows x64 최종 패키지 성공; 로컬 ZIP 158,397,920 bytes, SHA-256 `e40140ce2921f5bfb2594aa624818e025fd3a28bfeda77decad7a46a0e87ba67` |
 | 패키지 `--smoke-test` | 최종 Windows x64 EXE 실행/렌더러 마운트 exit 0 |
-| Linux x64·arm64 CI | 태그 CI 결과 보충 |
-| 2.1.1 공개 자산 | 릴리스 URL·SHA-256 결과 보충 |
+| `main` CI | [41419285177](https://github.com/Yupkidangju/instadesk/actions/runs/41419285177): Windows x64·Linux x64·Linux arm64 패키지/로드 3/3 성공 |
+| Linux x64·arm64·Windows x64 태그 CI | [41419547837](https://github.com/Yupkidangju/instadesk/actions/runs/41419547837): 세 패키지와 release 작업 4/4 성공 |
+| 2.1.1 공개 자산 | [공개 릴리스](https://github.com/Yupkidangju/instadesk/releases/tag/v2.1.1): draft/prerelease 아님. 세 아카이브 `uploaded`, 공개 URL HEAD 200, `SHA256SUMS.txt`의 세 항목과 GitHub 자산 digest 일치 |
 
 첫 `main` CI [41419061749](https://github.com/Yupkidangju/instadesk/actions/runs/41419061749)의 Linux arm64에서 `audit4AutoLock.test.tsx`가 폴링 호출 수를 10회 초과로 고정해 실패했다. 해당 실행에서는 6회 호출 후 15분 잠금 검사가 수행됐다. 시간 기반 잠금 결과를 유지하고 횟수 조건을 반복 호출(`>1`)로 좁혀 재실행한다. 첫 CI 실패를 성공으로 기록하지 않는다.
+
+공개 자산 확인 (2026-11-02):
+
+| 자산 | 크기(bytes) | SHA-256 |
+| --- | ---: | --- |
+| `InstaDesk-2.1.1-linux-arm64.tar.gz` | 125,131,815 | `a521f19091abbc004120d9beafbad99bdd2f42318b907a62fc4714d7f697e98c` |
+| `InstaDesk-2.1.1-linux-x64.tar.gz` | 124,048,101 | `afd346aacfddfb34c73cb87091bfb5742aaab97654e13f948e9ebebb6cfa427c` |
+| `InstaDesk-2.1.1-win-x64.zip` | 158,397,936 | `1a47ef5917f4a27d26afb79a510ed6eb2eeebcff2d3833efb36cbe7e296f3f80` |
+| `SHA256SUMS.txt` | 294 | `664c399542ca5af147ae5c8a3e4fa63e7efcb2e34fba19e025d58bbbd4e6c3ca` |
+
+로컬 ZIP과 CI의 공개 ZIP은 크기·해시가 다르다. 아카이브의 바이트 재현성을 주장하지 않으며 공개 다운로드 검증에는 위 공개 해시를 사용한다. 태그 `v2.1.1`은 `5f4fbb8a240f787673b4be8da77607b01108e048`을 가리킨다.
 
 **판정:** 수정 범위의 자체 회귀는 통과했다. 독립 재감사와 실 5대 PTY·SSE, 기존 사용자의 5개 키 프로필 복원은 **HOLD/미검증**이다. 사용자 직접 수용 검사에서 PTY 5대를 열어 타일별 `session` 준비/HTTP·WS 범주/자동 재시도 결과를 확인하고, 별도 읽기 전용 Broadcast 5대의 개별 exit code를 확인해야 한다. 비밀·명령 출력은 보고서에 적지 않는다.
