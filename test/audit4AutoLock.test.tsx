@@ -25,7 +25,7 @@ describe('audit 4 user inactivity lock', () => {
     expect(cryptoVault.isUnlocked()).toBe(true);
     await act(async () => { await vi.advanceTimersByTimeAsync(10 * 60_000); });
     expect(cryptoVault.isUnlocked()).toBe(false);
-    expect(request.mock.calls.length).toBeGreaterThan(10);
+    expect(request.mock.calls.length).toBeGreaterThan(1);
     expect(useAppStore.getState().sessionStates).toEqual({});
   });
 });

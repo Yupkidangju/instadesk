@@ -40,4 +40,6 @@ Electron `userData`와 `sessionData`를 OS 사용자별 버전 없는 `InstaDesk
 | Linux x64·arm64 CI | 태그 CI 결과 보충 |
 | 2.1.1 공개 자산 | 릴리스 URL·SHA-256 결과 보충 |
 
+첫 `main` CI [41419061749](https://github.com/Yupkidangju/instadesk/actions/runs/41419061749)의 Linux arm64에서 `audit4AutoLock.test.tsx`가 폴링 호출 수를 10회 초과로 고정해 실패했다. 해당 실행에서는 6회 호출 후 15분 잠금 검사가 수행됐다. 시간 기반 잠금 결과를 유지하고 횟수 조건을 반복 호출(`>1`)로 좁혀 재실행한다. 첫 CI 실패를 성공으로 기록하지 않는다.
+
 **판정:** 수정 범위의 자체 회귀는 통과했다. 독립 재감사와 실 5대 PTY·SSE, 기존 사용자의 5개 키 프로필 복원은 **HOLD/미검증**이다. 사용자 직접 수용 검사에서 PTY 5대를 열어 타일별 `session` 준비/HTTP·WS 범주/자동 재시도 결과를 확인하고, 별도 읽기 전용 Broadcast 5대의 개별 exit code를 확인해야 한다. 비밀·명령 출력은 보고서에 적지 않는다.
