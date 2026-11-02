@@ -1,7 +1,7 @@
 # InstaDesk 데스크톱 명세
 
 **Document Version:** 2.1.1 (감사 4 수정 계약)
-**Status:** `v2.1.1` Windows x64·Linux x64·Linux arm64 네이티브 CI·공개 릴리스 완료. 감사 4 수정은 자체 회귀 통과; 실 5대 PTY·SSE와 기존 사용자 키 5개 복원은 사용자 직접 확인 전까지 미검증. 물리 ARM 기기·다른 배포판·실 서비스 변경 흐름도 별도 검증 대상
+**Status:** `v2.1.1` Windows x64·Linux x64·Linux arm64 네이티브 CI·공개 릴리스 완료. 감사 4 수정은 자체 회귀 통과, 5대 PTY 최초 연결과 Broadcast는 사용자 성공 보고. 오류 폴백·기존 사용자 키 5개 보존/복원·물리 ARM 기기·다른 배포판·실 서비스 변경 흐름은 별도 검증 대상
 **Last Updated:** 2026-11-02
 
 ---
