@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validateDesktopViewRequest } from '../electron/desktopViewPolicy';
+import { validateDesktopViewOptions, validateDesktopViewRequest } from '../electron/desktopViewPolicy';
 
 const valid = () => ({
   id: 'desktop-p1-m1', profileId: 'p1',
@@ -21,5 +21,11 @@ describe('desktop view boundary', () => {
     ]) expect(() => validateDesktopViewRequest({ ...valid(), url })).toThrow();
     expect(() => validateDesktopViewRequest({ ...valid(), bounds: { x: -1, y: 0, width: 640, height: 400 } })).toThrow();
     expect(() => validateDesktopViewRequest({ ...valid(), bounds: { x: 0, y: 0, width: Number.NaN, height: 400 } })).toThrow();
+  });
+
+  it('accepts only boolean native visibility and wheel routing flags', () => {
+    expect(() => validateDesktopViewOptions({ visible: false, routeWheelToWorkspace: true })).not.toThrow();
+    expect(() => validateDesktopViewOptions({ visible: 'false', routeWheelToWorkspace: true } as never)).toThrow();
+    expect(() => validateDesktopViewOptions({ visible: true, routeWheelToWorkspace: 'true' } as never)).toThrow();
   });
 });

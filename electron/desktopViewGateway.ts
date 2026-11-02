@@ -2,18 +2,21 @@ import { BrowserWindow, WebContentsView } from 'electron';
 import {
   isDashboardUrl,
   validateDesktopBounds,
+  validateDesktopViewOptions,
   validateDesktopViewRequest,
   type DesktopViewBounds,
+  type DesktopViewOptions,
   type DesktopViewRequest,
 } from './desktopViewPolicy';
 
 export interface DesktopViewEvent {
   id: string;
-  type: 'loaded' | 'error' | 'activity';
+  type: 'loaded' | 'error' | 'activity' | 'wheel';
+  deltaY?: number;
 }
 
 export class DesktopViewGateway {
-  private views = new Map<string, { profileId: string; view: WebContentsView }>();
+  private views = new Map<string, { profileId: string; view: WebContentsView; routeWheelToWorkspace: boolean }>();
 
   constructor(private window: BrowserWindow, private emit: (event: DesktopViewEvent) => void) {}
 
@@ -30,12 +33,22 @@ export class DesktopViewGateway {
     });
     view.setBackgroundColor('#050507');
     view.setBounds(this.roundBounds(request.bounds));
+    view.setVisible(request.options?.visible !== false);
     view.webContents.setZoomFactor(1);
     view.webContents.on('before-input-event', (_event, input) => {
       if (input.type === 'keyDown') this.emitIfCurrent(request.id, view, 'activity');
     });
-    view.webContents.on('before-mouse-event', (_event, mouse) => {
+    view.webContents.on('before-mouse-event', (event, mouse) => {
       if (mouse.type === 'mouseDown' || mouse.type === 'mouseWheel') this.emitIfCurrent(request.id, view, 'activity');
+      const entry = this.views.get(request.id);
+      if (mouse.type !== 'mouseWheel' || mouse.modifiers?.includes('alt') ||
+          entry?.view !== view || !entry.routeWheelToWorkspace) return;
+      const wheel = mouse as Electron.MouseWheelInputEvent;
+      const deltaY = Number.isFinite(wheel.deltaY) ? wheel.deltaY! :
+        Number.isFinite(wheel.wheelTicksY) ? -wheel.wheelTicksY! * 100 : 0;
+      if (!deltaY) return;
+      event.preventDefault();
+      this.emit({ id: request.id, type: 'wheel', deltaY: Math.max(-1200, Math.min(1200, deltaY)) });
     });
     view.webContents.on('will-navigate', (event, url) => {
       if (!isDashboardUrl(url)) event.preventDefault();
@@ -53,15 +66,20 @@ export class DesktopViewGateway {
       if (isMainFrame && code !== -3) this.emitIfCurrent(request.id, view, 'error');
     });
     this.window.contentView.addChildView(view);
-    this.views.set(request.id, { profileId: request.profileId, view });
+    this.views.set(request.id, { profileId: request.profileId, view,
+      routeWheelToWorkspace: request.options?.routeWheelToWorkspace ?? false });
     void view.webContents.loadURL(request.url).catch(() => this.emitIfCurrent(request.id, view, 'error'));
   }
 
-  update(id: string, bounds: DesktopViewBounds): void {
+  update(id: string, bounds: DesktopViewBounds, options?: DesktopViewOptions): void {
     validateDesktopBounds(bounds);
-    const view = this.views.get(id)?.view;
-    if (!view) return;
-    view.setBounds(this.roundBounds(bounds));
+    validateDesktopViewOptions(options);
+    const entry = this.views.get(id);
+    if (!entry) return;
+    entry.routeWheelToWorkspace = options?.routeWheelToWorkspace ?? false;
+    if (options?.visible === false) entry.view.setVisible(false);
+    entry.view.setBounds(this.roundBounds(bounds));
+    if (options?.visible !== false) entry.view.setVisible(true);
   }
 
   close(id: string): void {

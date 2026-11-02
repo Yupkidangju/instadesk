@@ -95,7 +95,7 @@ export const WorkspaceGrid: React.FC = () => {
   const displayTiles = gridMode === '1x1' ? [focusedTile] : tiles;
 
   return (
-    <main className="flex-1 min-w-0 min-h-0 w-full bg-[#09090b] p-2 overflow-y-auto flex flex-col">
+    <main data-workspace-scroll className="flex-1 min-w-0 min-h-0 w-full bg-[#09090b] p-2 overflow-y-auto flex flex-col">
       {gridMode === '1x1' && tiles.length > 1 && (
         <nav aria-label="Focused workspace" className="flex gap-1 mb-2 overflow-x-auto">
           {tiles.map((tile) => (

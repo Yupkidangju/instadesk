@@ -22,10 +22,12 @@ export interface DesktopBridge {
     profileId: string;
     url: string;
     bounds: { x: number; y: number; width: number; height: number };
+    options?: { visible: boolean; routeWheelToWorkspace: boolean };
   }): Promise<void>;
-  updateDesktopView(id: string, bounds: { x: number; y: number; width: number; height: number }): Promise<void>;
+  updateDesktopView(id: string, bounds: { x: number; y: number; width: number; height: number },
+    options?: { visible: boolean; routeWheelToWorkspace: boolean }): Promise<void>;
   closeDesktopView(id: string): Promise<void>;
-  onDesktopEvent(callback: (event: { id: string; type: 'loaded' | 'error' | 'activity' }) => void): () => void;
+  onDesktopEvent(callback: (event: { id: string; type: 'loaded' | 'error' | 'activity' | 'wheel'; deltaY?: number }) => void): () => void;
 }
 
 declare global {

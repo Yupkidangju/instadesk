@@ -6,16 +6,16 @@
 
 **InstaDesk** is a desktop app for managing [InstaBox](https://instabox.sh) virtual machines with your own API key. Add a key, see the VMs available to its workspace, and work with terminals, desktops, and commands from one window.
 
-**Download:** [InstaDesk v2.1.1](https://github.com/Yupkidangju/instadesk/releases/tag/v2.1.1) · Windows x64 · Linux x64 · Linux arm64
+**Download:** [InstaDesk v2.1.2](https://github.com/Yupkidangju/instadesk/releases/tag/v2.1.2) · Windows x64 · Linux x64 · Linux arm64
 
 ### Install
 
-**Windows:** Download `InstaDesk-2.1.1-win-x64.zip`, extract the whole archive, and run `InstaDesk.exe` inside the extracted folder.
+**Windows:** Download `InstaDesk-2.1.2-win-x64.zip`, extract the whole archive, and run `InstaDesk.exe` inside the extracted folder.
 
 **Linux:** Download the `linux-x64` or `linux-arm64` archive for your machine. In the download directory, run the following commands, replacing `x64` with `arm64` when needed:
 
 ```bash
-name=InstaDesk-2.1.1-linux-x64
+name=InstaDesk-2.1.2-linux-x64
 sudo install -d -m 0755 /opt/instadesk
 sudo tar -xzf "${name}.tar.gz" -C /opt/instadesk
 sudo chown -R root:root "/opt/instadesk/${name}"
@@ -46,6 +46,8 @@ The profile name labels the saved key; it does not create or rename a VM. One ke
 | Logs, processes, and status | Check VM activity without switching between separate tools. |
 | Local key vault and demo | Keys are encrypted on this computer and the vault locks after 15 minutes without user input. Try the offline demo without a key. |
 
+When the VM grid has more rows than the window, the wheel over a Desktop view scrolls the VM tiles. Use **Alt+wheel** to scroll inside the remote Desktop.
+
 InstaDesk connects directly to InstaBox; it does not require a shared proxy or GitHub Pages. The encrypted vault is stored in your operating-system account, outside the extracted app folder. For source builds and detailed Linux setup, see [BUILD_GUIDE.md](BUILD_GUIDE.md).
 
 Apache License 2.0. Copyright 2026 Yupkidangju <yupkidangju@gmail.com>. [License](LICENSE).
@@ -54,16 +56,16 @@ Apache License 2.0. Copyright 2026 Yupkidangju <yupkidangju@gmail.com>. [License
 
 **InstaDesk**는 본인의 API 키로 [InstaBox](https://instabox.sh) 가상 머신을 관리하는 데스크톱 앱입니다. 키를 등록하면 해당 워크스페이스의 VM을 한 창에서 확인하고 터미널, 데스크톱, 명령 실행을 사용할 수 있습니다.
 
-**다운로드:** [InstaDesk v2.1.1](https://github.com/Yupkidangju/instadesk/releases/tag/v2.1.1) · Windows x64 · Linux x64 · Linux arm64
+**다운로드:** [InstaDesk v2.1.2](https://github.com/Yupkidangju/instadesk/releases/tag/v2.1.2) · Windows x64 · Linux x64 · Linux arm64
 
 ### 설치
 
-**Windows:** `InstaDesk-2.1.1-win-x64.zip`을 내려받아 전체 압축을 푼 다음, 폴더 안의 `InstaDesk.exe`를 실행합니다.
+**Windows:** `InstaDesk-2.1.2-win-x64.zip`을 내려받아 전체 압축을 푼 다음, 폴더 안의 `InstaDesk.exe`를 실행합니다.
 
 **Linux:** 기기에 맞는 `linux-x64` 또는 `linux-arm64` 압축 파일을 내려받습니다. 내려받은 파일이 있는 디렉터리에서 다음 명령을 실행하세요. ARM64 기기라면 첫 줄의 `x64`를 `arm64`로 바꿉니다.
 
 ```bash
-name=InstaDesk-2.1.1-linux-x64
+name=InstaDesk-2.1.2-linux-x64
 sudo install -d -m 0755 /opt/instadesk
 sudo tar -xzf "${name}.tar.gz" -C /opt/instadesk
 sudo chown -R root:root "/opt/instadesk/${name}"
@@ -93,6 +95,8 @@ sudo chmod 4755 "/opt/instadesk/${name}/chrome-sandbox"
 | 명령 실행·Broadcast | VM 한 대 또는 선택한 실행 중 VM 여러 대에 명령을 보냅니다. Broadcast에는 PTY 연결이 필요하지 않습니다. |
 | 로그·프로세스·상태 | 여러 도구를 오가지 않고 VM 동작을 확인합니다. |
 | 로컬 키 볼트·데모 | 키를 이 컴퓨터에 암호화해 저장하고 15분간 사용자 입력이 없으면 잠급니다. 키 없이 오프라인 데모를 체험할 수도 있습니다. |
+
+VM 타일이 여러 행으로 이어져 작업 영역을 스크롤할 때는 Desktop 위의 일반 휠이 타일을 움직입니다. 원격 Desktop 안을 스크롤하려면 **Alt+휠**을 사용하세요.
 
 InstaDesk는 InstaBox에 직접 연결하므로 공용 프록시나 GitHub Pages가 필요하지 않습니다. 암호화된 볼트는 압축을 푼 앱 폴더 밖의 OS 사용자 데이터에 저장됩니다. 소스에서 빌드하거나 Linux 설치를 자세히 보려면 [BUILD_GUIDE.md](BUILD_GUIDE.md)를 참고하세요.
 

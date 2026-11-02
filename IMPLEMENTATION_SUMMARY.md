@@ -1,4 +1,4 @@
-# InstaDesk 2.1.1 구현 요약
+# InstaDesk 2.1.2 구현 요약
 
 2026-11-01 · Windows x64·Linux x64·Linux arm64 Electron 포터블 앱. 기존 웹 구현 요약은 [보존본](docs/legacy/IMPLEMENTATION_SUMMARY.web-2026-11-01.md)에 있다.
 
@@ -30,3 +30,5 @@ InstaDesk.exe (Windows) / InstaDesk (Linux)
 
 감사 4의 변경은 [수정 계약](docs/electron/audit_4_remediation.md)과 [finding별 결과](docs/audit/audit_report_4_remediation.md)를 기준으로 한다. `cryptoVault.ts`는 v1→v2 이행·암호문구 변경·사용자 입력 기준 잠금을 담당한다. `TerminalView.tsx`는 준비 신호 뒤 LIVE 표시와 한정 재시도를 담당한다. `ApiKeyModal.tsx`와 `MasterUnlockModal.tsx`는 비밀 입력을 닫기·잠금·실패 후 지운다.
 자동 조회의 `lastUsedAt` 쓰기는 최신 볼트 레코드에 병합해 새 프로필을 잃는 경합을 막는다. v1→v2 및 v2의 키 프로필 5개 보존을 회귀 테스트로 확인한다.
+
+2.1.2 스크롤 수정은 `WorkspaceGrid.tsx`의 작업 영역 식별, `DesktopScreenView.tsx`의 자리·가시성 계산, `electron/desktopViewGateway.ts`의 네이티브 가시성·휠 전달을 연결한다. 목표와 검증 순서는 `docs/electron/desktop_scroll_2_1_2.md`에 있다.

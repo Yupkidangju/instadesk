@@ -21,6 +21,7 @@ flowchart LR
 - PTY 액세스 티켓은 기존 REST 경로로 발급받고, 렌더러가 티켓 URL과 서비스가 반환한 서브프로토콜·토큰을 IPC로 메인에 전달한다. 메인은 허용된 WSS 호스트·경로와 WebSocket 토큰 문법을 재검증한다. 서브프로토콜 이름은 서비스 응답에 따르며 티켓 토큰의 점(`.`)을 허용한다. 선택한 세션 이름은 URL의 `session` 쿼리로 보낸다. 잠금·프로필 제거 때 해당 소켓과 요청을 중단한다.
 - 2.1.1에서 `open`은 WSS 수립, `ready`는 서버 `session` 신호다. PTY 입력·LIVE 표시는 `ready` 후에만 허용한다. 메인은 `taken`/`error`/`exit`와 HTTP 상태·close code를 비밀 없는 범주로 변환하고, 렌더러는 429·503·일시 네트워크만 최대 3회 재티켓 후 재연결한다. 앱의 연결 수는 로컬 관측치이며 서비스의 user당 PTY 8개 한도는 서버가 판정한다.
 - 실제 Desktop 링크는 `dashboard.instabox.sh`가 `X-Frame-Options: DENY`와 `frame-ancestors 'none'`을 보내므로 iframe 대신 Electron의 별도 `WebContentsView`에 최상위 문서로 연다. 메인은 링크의 고정 HTTPS Origin과 화면 좌표를 검증한다. 원격 뷰에는 preload/Node 권한을 주지 않으며 앱 모달·잠금·프로필 제거 때 뷰를 닫는다. 실 키의 스트림 영상은 확인했고 마우스·키보드 입력은 별도 검증 대상이다.
+- 여러 행을 스크롤할 때 렌더러가 Desktop 자리의 실제 좌표·스크롤 영역 가시성·휠 경로를 좁은 IPC로 전달한다. 메인은 네이티브 뷰를 숨기거나 다시 표시하되 스트림을 재발급하지 않는다. Desktop 뷰가 휠을 받는 동안 작업 영역에 스크롤이 있으면 일반 휠을 렌더러 작업 영역으로 전달하고 `Alt+휠`은 원격 뷰에 남긴다. `docs/electron/desktop_scroll_2_1_2.md`를 따른다.
 - 실제 스트림용 네이티브 뷰는 가용 데스크톱 패널 전체를 차지한다. 서버 상태의 보고 해상도와 실제 스트림 framebuffer가 다를 수 있으므로, 앱이 보고 해상도로 외곽 높이를 제한하지 않는다. 대시보드가 실제 framebuffer 화면비를 유지하며 내부 canvas를 가용 영역에 맞춘다. 데모 미리보기는 기존 `fitDesktop` 계산을 사용한다.
 - 대시보드 문서 로드가 끝난 뒤 뷰의 zoom factor를 명시적으로 1로 설정한다. Electron은 탐색 과정에서 이전 호스트 배율을 다시 적용할 수 있어 뷰 생성 직후의 설정만으로는 부족하다.
 - VM이 `suspended`·`stopped` 등 실행 중이 아닌 상태이면 새 Desktop 링크를 열지 않고 현재 머신 상태와 재개 안내를 표시한다. 사용자가 사이드바에서 VM을 재개해 `running` 상태가 확인되면 링크를 다시 발급한다.

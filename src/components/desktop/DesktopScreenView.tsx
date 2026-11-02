@@ -4,6 +4,7 @@ import { instaboxClient } from '../../services/instaboxClient';
 import { cryptoVault } from '../../services/cryptoVault';
 import { DesktopStatus } from '../../types/instabox';
 import { fitDesktop } from './fitDesktop';
+import { nativeDesktopPlacement } from './nativeDesktopPlacement';
 import { useAppStore } from '../../store/useAppStore';
 import {
   Monitor,
@@ -46,19 +47,18 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
   const machineState = useAppStore((state) => state.machines.find((machine) =>
     machine.id === machineId && machine.profileId === profileId)?.state);
   const machineReady = !machineState || machineState === 'running';
+  const tileCount = useAppStore((state) => state.tiles.length);
+  const gridMode = useAppStore((state) => state.gridMode);
   const viewId = `desktop_${profileId}_${machineId}`;
   const frameWidth = desktopStatus?.width || resolution.width;
   const frameHeight = desktopStatus?.height || resolution.height;
   const fitted = fitDesktop(frameWidth, frameHeight, viewport.width, viewport.height);
-  const viewBounds = () => {
-    const rect = viewportRef.current?.getBoundingClientRect();
-    if (!rect || viewport.width < 1 || viewport.height < 1 || rect.width < 1 || rect.height < 1) return null;
-    return {
-      x: Math.max(0, Math.round(rect.left)),
-      y: Math.max(0, Math.round(rect.top)),
-      width: Math.max(1, Math.round(rect.width)),
-      height: Math.max(1, Math.round(rect.height)),
-    };
+  const viewPlacement = () => {
+    const element = viewportRef.current;
+    if (!element || viewport.width < 1 || viewport.height < 1) return null;
+    const scrollHost = element.closest<HTMLElement>('[data-workspace-scroll]');
+    return nativeDesktopPlacement(element.getBoundingClientRect(), scrollHost?.getBoundingClientRect() ?? null,
+      Boolean(scrollHost && scrollHost.scrollHeight > scrollHost.clientHeight + 1));
   };
 
   useEffect(() => {
@@ -107,18 +107,24 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
 
   useEffect(() => {
     const bridge = window.instadeskDesktop;
-    const bounds = viewBounds();
+    const placement = viewPlacement();
     if (!bridge || profileId.startsWith('demo-') || !streamUrl || !desktopStatus?.running ||
-        modalOpen || !bounds) return;
+        modalOpen || !placement) return;
     let active = true;
     setNativeStatus('loading');
     const unsubscribe = bridge.onDesktopEvent((event) => {
       if (!active || event.id !== viewId) return;
       if (event.type === 'activity') { cryptoVault.touch(); return; }
+      if (event.type === 'wheel') {
+        const scrollHost = viewportRef.current?.closest<HTMLElement>('[data-workspace-scroll]');
+        if (scrollHost && Number.isFinite(event.deltaY)) scrollHost.scrollBy({ top: event.deltaY, behavior: 'auto' });
+        return;
+      }
       setNativeStatus(event.type === 'loaded' ? 'loaded' : 'error');
       if (event.type === 'error') void bridge.closeDesktopView(viewId);
     });
-    void bridge.openDesktopView({ id: viewId, profileId, url: streamUrl, bounds })
+    void bridge.openDesktopView({ id: viewId, profileId, url: streamUrl, bounds: placement.bounds,
+      options: { visible: placement.visible, routeWheelToWorkspace: placement.routeWheelToWorkspace } })
       .catch(() => { if (active) setNativeStatus('error'); });
     return () => {
       active = false;
@@ -131,17 +137,19 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
     const bridge = window.instadeskDesktop;
     if (!bridge || !streamUrl || modalOpen || profileId.startsWith('demo-')) return;
     const update = () => {
-      const bounds = viewBounds();
-      if (bounds) void bridge.updateDesktopView(viewId, bounds);
+      const placement = viewPlacement();
+      if (placement) void bridge.updateDesktopView(viewId, placement.bounds,
+        { visible: placement.visible, routeWheelToWorkspace: placement.routeWheelToWorkspace });
     };
     update();
+    const scrollHost = viewportRef.current?.closest<HTMLElement>('[data-workspace-scroll]');
+    scrollHost?.addEventListener('scroll', update, { passive: true });
     window.addEventListener('resize', update);
-    window.addEventListener('scroll', update, true);
     return () => {
+      scrollHost?.removeEventListener('scroll', update);
       window.removeEventListener('resize', update);
-      window.removeEventListener('scroll', update, true);
     };
-  }, [streamUrl, viewId, modalOpen, viewport.width, viewport.height]);
+  }, [streamUrl, viewId, modalOpen, viewport.width, viewport.height, tileCount, gridMode]);
 
   // 데스크톱 시작 (Xvfb + Xfce + Chromium)
   const handleStartDesktop = async () => {
@@ -226,6 +234,9 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
           <span className="hidden sm:inline text-zinc-500 text-[10px]">
             {frameWidth}x{frameHeight}
           </span>
+          {tileCount > 2 && <span className="hidden xl:inline text-zinc-500 text-[10px]" title="Wheel scrolls VM tiles; Alt+wheel scrolls the remote desktop">
+            WHEEL: TILES · ALT+WHEEL: VM
+          </span>}
         </div>
 
         {/* 우측 툴 액션 */}

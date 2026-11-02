@@ -18,7 +18,7 @@ npm run desktop:dev
 npm run package:win
 ```
 
-`release/InstaDesk-2.1.1-win-x64/`와 같은 이름의 ZIP이 생깁니다. 스크립트는 기존 같은 이름의 산출물을 덮어쓰지 않습니다. 버전을 변경하거나 기존 산출물을 별도로 보관한 뒤 다시 실행하세요. ZIP을 압축 해제해 `InstaDesk.exe`를 실행합니다. 사용자 볼트는 실행 폴더가 아닌 Windows의 앱 사용자 데이터 영역에 저장됩니다. 설치 프로그램, 코드 서명, 자동 업데이트는 포함되지 않습니다.
+`release/InstaDesk-2.1.2-win-x64/`와 같은 이름의 ZIP이 생깁니다. 스크립트는 기존 같은 이름의 산출물을 덮어쓰지 않습니다. 버전을 변경하거나 기존 산출물을 별도로 보관한 뒤 다시 실행하세요. ZIP을 압축 해제해 `InstaDesk.exe`를 실행합니다. 사용자 볼트는 실행 폴더가 아닌 Windows의 앱 사용자 데이터 영역에 저장됩니다. 설치 프로그램, 코드 서명, 자동 업데이트는 포함되지 않습니다.
 
 볼트는 Windows의 `%APPDATA%\InstaDesk`, Linux의 `$XDG_CONFIG_HOME/InstaDesk`(설정되지 않았으면 `~/.config/InstaDesk`)에 해당하는 Electron 사용자/세션 데이터 경로에 저장합니다. 버전별 폴더가 아니므로 앱 교체 전에 이 사용자 데이터 디렉터리를 삭제하지 마세요. 동일 OS 사용자에서 보이지 않으면 새 볼트 초기화 전에 경로·계정을 확인하세요.
 
@@ -33,7 +33,7 @@ npm ci
 npm run desktop:install
 npm test
 npm run package:linux
-name="InstaDesk-2.1.1-linux-$(node -p 'process.arch')"
+name="InstaDesk-2.1.2-linux-$(node -p 'process.arch')"
 sudo install -d -m 0755 /opt/instadesk
 sudo tar -xzf "release/${name}.tar.gz" -C /opt/instadesk
 sudo chown -R root:root "/opt/instadesk/${name}"
@@ -45,7 +45,7 @@ sudo chmod 4755 "/opt/instadesk/${name}/chrome-sandbox"
 
 ## CI/CD와 릴리스
 
-`.github/workflows/desktop.yml`은 `main` push와 수동 실행 때 Windows x64·Linux x64·Linux arm64를 각각 검사·패키징하고 아티팩트로 올립니다. 버전 태그 `v2.1.1` push 때는 세 아키텍처의 패키지 로드 스모크가 모두 성공한 뒤에만 세 아카이브와 `SHA256SUMS.txt`를 GitHub Release로 게시합니다. 빌드 아티팩트와 공식 릴리스 자산을 구분하세요.
+`.github/workflows/desktop.yml`은 `main` push와 수동 실행 때 Windows x64·Linux x64·Linux arm64를 각각 검사·패키징하고 아티팩트로 올립니다. 버전 태그 `v2.1.2` push 때는 세 아키텍처의 패키지 로드 스모크가 모두 성공한 뒤에만 세 아카이브와 `SHA256SUMS.txt`를 GitHub Release로 게시합니다. 빌드 아티팩트와 공식 릴리스 자산을 구분하세요.
 
 ## 사용
 

@@ -6,7 +6,7 @@ import { resolveAppAsset } from './appProtocol';
 import { proxyApiRequest } from './apiGateway';
 import { TerminalGateway, type TerminalOpenRequest } from './terminalGateway';
 import { DesktopViewGateway } from './desktopViewGateway';
-import type { DesktopViewBounds, DesktopViewRequest } from './desktopViewPolicy';
+import type { DesktopViewBounds, DesktopViewOptions, DesktopViewRequest } from './desktopViewPolicy';
 import { resolveUserDataPath } from './userDataPath';
 
 const userDataPath = resolveUserDataPath(app.getPath('appData'));
@@ -90,9 +90,9 @@ function createWindow(): void {
     ownRenderer(event);
     desktops.open(request);
   });
-  ipcMain.handle('desktop:update', (event, id: string, bounds: DesktopViewBounds) => {
+  ipcMain.handle('desktop:update', (event, id: string, bounds: DesktopViewBounds, options?: DesktopViewOptions) => {
     ownRenderer(event);
-    desktops.update(id, bounds);
+    desktops.update(id, bounds, options);
   });
   ipcMain.handle('desktop:close', (event, id: string) => {
     ownRenderer(event);

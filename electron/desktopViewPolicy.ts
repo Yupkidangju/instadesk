@@ -10,6 +10,12 @@ export interface DesktopViewRequest {
   profileId: string;
   url: string;
   bounds: DesktopViewBounds;
+  options?: DesktopViewOptions;
+}
+
+export interface DesktopViewOptions {
+  visible: boolean;
+  routeWheelToWorkspace: boolean;
 }
 
 export function isDashboardUrl(value: string): boolean {
@@ -28,10 +34,17 @@ export function validateDesktopBounds(bounds: DesktopViewBounds): void {
   }
 }
 
+export function validateDesktopViewOptions(options?: DesktopViewOptions): void {
+  if (options && (typeof options.visible !== 'boolean' || typeof options.routeWheelToWorkspace !== 'boolean')) {
+    throw new Error('Invalid desktop view options');
+  }
+}
+
 export function validateDesktopViewRequest(request: DesktopViewRequest): DesktopViewRequest {
   if (!request || !/^[A-Za-z0-9_-]{1,256}$/.test(request.id) ||
       !/^[A-Za-z0-9_-]{1,128}$/.test(request.profileId) ||
       !isDashboardUrl(request.url)) throw new Error('Desktop destination denied');
   validateDesktopBounds(request.bounds);
+  validateDesktopViewOptions(request.options);
   return request;
 }
