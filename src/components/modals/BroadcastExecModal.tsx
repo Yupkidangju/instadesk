@@ -167,6 +167,7 @@ export const BroadcastExecModal: React.FC = () => {
             <X className="w-4 h-4" />
           </button>
         </div>
+        <p className="px-4 py-2 text-[11px] text-zinc-400 border-b border-zinc-800">Broadcast uses a separate SSE exec request for each running VM. It does not require an open PTY; each target reports its own result.</p>
 
         {/* 바디 */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">

@@ -152,6 +152,14 @@ class InstaboxClientService {
         const err = new Error(errorMsg);
         (err as unknown as { status: number; code?: string }).status = res.status;
         (err as unknown as { status: number; code?: string }).code = errBody.error?.code;
+        if (res.status === 429) {
+          const raw = res.headers.get('Retry-After');
+          if (raw) {
+            const seconds = Number(raw);
+            const delay = Number.isFinite(seconds) ? seconds * 1000 : Date.parse(raw) - Date.now();
+            if (Number.isFinite(delay) && delay >= 0) (err as Error & { retryAfterMs?: number }).retryAfterMs = delay;
+          }
+        }
         throw err;
       }
 

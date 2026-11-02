@@ -5,6 +5,17 @@ All notable changes to the InstaBox Deck project will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2026-11-02
+
+### Fixed
+- 사용자 입력 기준 15분 자동 잠금으로 바꾸고 자동 조회가 잠금을 연장하지 않게 합니다. 잠금·모달 닫기·실패 후 비밀 입력을 지웁니다.
+- PTY `session` 준비 신호, 서버 거절 범주·코드와 제한 재시도를 처리합니다. 서버의 user 단위 PTY 8개 계약에 맞춰 로컬 관측 수를 표시합니다.
+- 기존 볼트 v1을 보존하며 600,000회 PBKDF2 v2로 이행하고, 신규·변경 암호문구에 최소 15자를 요구합니다.
+- 자동 조회의 늦은 사용 시각 갱신이 새로 저장한 API 키 프로필을 덮는 경합을 수정합니다. 앱 버전과 설치 폴더가 달라도 같은 사용자 볼트 경로를 사용합니다.
+
+### Changed
+- Broadcast가 열린 PTY와 독립된 SSE `exec`임을 앱과 가이드에 명시합니다.
+
 ## [2.1.0] - 2026-11-01
 
 ### Added

@@ -9,7 +9,7 @@ import { useAppStore } from '../src/store/useAppStore';
 
 beforeEach(async () => {
   cryptoVault.resetVault();
-  await cryptoVault.initializeVault('test-password');
+  await cryptoVault.initializeVault('test-password-long');
   useAppStore.setState({ isDemoMode: false, machines: [] });
 });
 
@@ -80,7 +80,7 @@ describe('Audit 3 security UI', () => {
   it('aborts an in-progress demo broadcast when the vault auto-locks', async () => {
     cryptoVault.resetVault();
     vi.useFakeTimers();
-    await cryptoVault.initializeVault('test-password', 0.001);
+    await cryptoVault.initializeVault('test-password-long', 0.001);
     const demo = await instaboxClient.listMachines('demo-default');
     useAppStore.setState({ machines: [demo[0]], isDemoMode: true });
     useAppStore.getState().openBroadcastModal();
@@ -113,5 +113,30 @@ describe('Audit 3 security UI', () => {
     expect(stream.mock.calls.map((call) => call[0])).toEqual(['first', 'second']);
     expect(screen.getAllByText('First VM').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Second VM').length).toBeGreaterThan(0);
+  });
+
+  it('dispatches five independent SSE targets without requiring any PTY session', async () => {
+    const [template] = await instaboxClient.listMachines('demo-default');
+    const machines = [];
+    for (let index = 0; index < 5; index++) {
+      machines.push({ ...template, id: `m_${index}`, name: `VM ${index + 1}`,
+        profileId: await cryptoVault.addProfile(`Key ${index + 1}`, `ibk_fixture_${index + 1}`),
+        profileLabel: `Key ${index + 1}` });
+    }
+    useAppStore.setState({ machines, sessionStates: {} });
+    const stream = vi.spyOn(instaboxClient, 'streamExec').mockImplementation(async (_profileId, machineId, _request,
+      _onStdout, _onStderr, onExit, onError) => {
+      if (machineId === 'm_4') onError(new Error('temporary failure'));
+      else onExit({ stdout: '', stderr: '', exitCode: 0, timedOut: false, truncated: false });
+    });
+    useAppStore.getState().openBroadcastModal();
+    render(React.createElement(BroadcastExecModal));
+    fireEvent.change(screen.getByPlaceholderText('ENTER COMMAND TO BROADCAST...'), { target: { value: 'uptime' } });
+    fireEvent.click(screen.getByText('DISPATCH ALL'));
+    await waitFor(() => expect(stream).toHaveBeenCalledTimes(5));
+    expect(stream.mock.calls.map(call => call[1]).sort()).toEqual(['m_0', 'm_1', 'm_2', 'm_3', 'm_4']);
+    expect(useAppStore.getState().sessionStates).toEqual({});
+    expect(screen.getAllByText('EXIT: 0')).toHaveLength(4);
+    expect(screen.getByText('EXIT: FAIL')).toBeDefined();
   });
 });

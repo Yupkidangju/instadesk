@@ -1,6 +1,7 @@
 // src/components/desktop/DesktopScreenView.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { instaboxClient } from '../../services/instaboxClient';
+import { cryptoVault } from '../../services/cryptoVault';
 import { DesktopStatus } from '../../types/instabox';
 import { fitDesktop } from './fitDesktop';
 import { useAppStore } from '../../store/useAppStore';
@@ -113,6 +114,7 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
     setNativeStatus('loading');
     const unsubscribe = bridge.onDesktopEvent((event) => {
       if (!active || event.id !== viewId) return;
+      if (event.type === 'activity') { cryptoVault.touch(); return; }
       setNativeStatus(event.type === 'loaded' ? 'loaded' : 'error');
       if (event.type === 'error') void bridge.closeDesktopView(viewId);
     });

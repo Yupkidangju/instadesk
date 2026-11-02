@@ -18,7 +18,9 @@ npm run desktop:dev
 npm run package:win
 ```
 
-`release/InstaDesk-2.1.0-win-x64/`와 같은 이름의 ZIP이 생깁니다. 스크립트는 기존 같은 이름의 산출물을 덮어쓰지 않습니다. 버전을 변경하거나 기존 산출물을 별도로 보관한 뒤 다시 실행하세요. ZIP을 압축 해제해 `InstaDesk.exe`를 실행합니다. 사용자 볼트는 실행 폴더가 아닌 Windows의 앱 사용자 데이터 영역에 저장됩니다. 설치 프로그램, 코드 서명, 자동 업데이트는 포함되지 않습니다.
+`release/InstaDesk-2.1.1-win-x64/`와 같은 이름의 ZIP이 생깁니다. 스크립트는 기존 같은 이름의 산출물을 덮어쓰지 않습니다. 버전을 변경하거나 기존 산출물을 별도로 보관한 뒤 다시 실행하세요. ZIP을 압축 해제해 `InstaDesk.exe`를 실행합니다. 사용자 볼트는 실행 폴더가 아닌 Windows의 앱 사용자 데이터 영역에 저장됩니다. 설치 프로그램, 코드 서명, 자동 업데이트는 포함되지 않습니다.
+
+볼트는 Windows의 `%APPDATA%\InstaDesk`, Linux의 `$XDG_CONFIG_HOME/InstaDesk`(설정되지 않았으면 `~/.config/InstaDesk`)에 해당하는 Electron 사용자/세션 데이터 경로에 저장합니다. 버전별 폴더가 아니므로 앱 교체 전에 이 사용자 데이터 디렉터리를 삭제하지 마세요. 동일 OS 사용자에서 보이지 않으면 새 볼트 초기화 전에 경로·계정을 확인하세요.
 
 패키지는 Electron 공식 Windows x64 바이너리, `resources/app`의 번들된 렌더러·메인·preload, `ws`, 라이선스만 담습니다. `electron.exe`와 `electron_wer.dll`은 각각 `InstaDesk.exe`, `InstaDesk_wer.dll`로 이름을 맞춥니다. ZIP의 SHA-256 및 네이티브 스모크 결과는 [검증 기록](docs/electron/verification.md)을 참조하세요.
 
@@ -31,7 +33,7 @@ npm ci
 npm run desktop:install
 npm test
 npm run package:linux
-name="InstaDesk-2.1.0-linux-$(node -p 'process.arch')"
+name="InstaDesk-2.1.1-linux-$(node -p 'process.arch')"
 sudo install -d -m 0755 /opt/instadesk
 sudo tar -xzf "release/${name}.tar.gz" -C /opt/instadesk
 sudo chown -R root:root "/opt/instadesk/${name}"
@@ -43,13 +45,15 @@ sudo chmod 4755 "/opt/instadesk/${name}/chrome-sandbox"
 
 ## CI/CD와 릴리스
 
-`.github/workflows/desktop.yml`은 `main` push와 수동 실행 때 Windows x64·Linux x64·Linux arm64를 각각 검사·패키징하고 아티팩트로 올립니다. 태그 `v2.1.0` push 때는 세 아키텍처의 패키지 로드 스모크가 모두 성공한 뒤에만 세 아카이브와 `SHA256SUMS.txt`를 GitHub Release로 게시합니다. 빌드 아티팩트와 공식 릴리스 자산을 구분하세요.
+`.github/workflows/desktop.yml`은 `main` push와 수동 실행 때 Windows x64·Linux x64·Linux arm64를 각각 검사·패키징하고 아티팩트로 올립니다. 버전 태그 `v2.1.1` push 때는 세 아키텍처의 패키지 로드 스모크가 모두 성공한 뒤에만 세 아카이브와 `SHA256SUMS.txt`를 GitHub Release로 게시합니다. 빌드 아티팩트와 공식 릴리스 자산을 구분하세요.
 
 ## 사용
 
-1. `InstaDesk.exe`를 열고 KEY VAULT에서 마스터 암호를 설정합니다.
+1. `InstaDesk.exe`를 열고 KEY VAULT에서 15자 이상의 마스터 암호문구를 설정합니다. 기존 암호화 프로필은 같은 사용자 데이터 영역에서 유지되므로 키를 재등록하지 않습니다.
 2. InstaBox API 키를 등록합니다. 연결 확인이 실패해도 암호화된 키는 남습니다.
 3. 머신 목록에서 TERM 또는 DESK를 엽니다. 데모는 키 없이 사용할 수 있습니다.
 4. 종료 후 재실행하면 볼트는 잠긴 상태이며 마스터 암호를 다시 입력해야 합니다.
+
+Broadcast는 열린 PTY와 별개인 SSE `exec` 요청으로 실행 중인 VM마다 결과를 냅니다. PTY 오류와 Broadcast 오류를 각각 확인하세요.
 
 이전 웹 빌드와 Pages 절차는 [과거 가이드](docs/legacy/BUILD_GUIDE.web-2026-11-01.md)에 보관합니다. 이 버전은 Pages/Worker를 배포하지 않습니다.

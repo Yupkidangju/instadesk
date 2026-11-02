@@ -7,7 +7,7 @@ let profileId: string;
 
 beforeEach(async () => {
   cryptoVault.resetVault();
-  await cryptoVault.initializeVault('test-password');
+  await cryptoVault.initializeVault('test-password-long');
   profileId = await cryptoVault.addProfile('Test', 'ibk_test');
 });
 
@@ -17,6 +17,13 @@ afterEach(() => {
 });
 
 describe('Audit 1 network and session regressions', () => {
+  it('carries Retry-After from a denied PTY access ticket without exposing the body', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: { message: 'quota_exceeded' } }),
+      { status: 429, headers: { 'Retry-After': '3' } })));
+    await expect(instaboxClient.getTerminalWebSocketUrl(profileId, 'm_1')).rejects.toMatchObject({
+      status: 429, retryAfterMs: 3000,
+    });
+  });
   it('combines paginated machine inventory and rejects a repeated cursor', async () => {
     const machine = (id: string) => ({ id, name: id });
     const fetchMock = vi.fn()
@@ -110,11 +117,11 @@ describe('Audit 1 network and session regressions', () => {
     expect(ticket.protocols).toEqual(['instabox.terminal.v2', 'instabox-access-token.iba_part.one.two']);
   });
 
-  it('counts connection reservations, frees closed sessions, and clears real tiles on lock', () => {
+  it('counts local PTYs without enforcing a per-profile quota and clears real tiles on lock', () => {
     const store = useAppStore.getState();
     store.clearAllTiles();
     for (let index = 0; index < 8; index++) expect(store.reserveSession(`tile-${index}`, profileId)).toBe(true);
-    expect(store.reserveSession('tile-8', profileId)).toBe(false);
+    expect(store.reserveSession('tile-8', profileId)).toBe(true);
     expect(store.reserveSession('other-key', 'another-profile')).toBe(true);
     store.releaseSession('tile-0');
     expect(store.reserveSession('tile-8', profileId)).toBe(true);
@@ -142,7 +149,7 @@ describe('Audit 1 network and session regressions', () => {
 
   it('removes real tiles on automatic vault lock', async () => {
     cryptoVault.resetVault();
-    await cryptoVault.initializeVault('test-password', 0.001);
+    await cryptoVault.initializeVault('test-password-long', 0.001);
     const id = await cryptoVault.addProfile('Timed', 'ibk_test');
     useAppStore.getState().addTile('m_1', id, 'terminal');
     await vi.waitFor(() => expect(cryptoVault.isUnlocked()).toBe(false));

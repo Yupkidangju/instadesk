@@ -11,7 +11,7 @@ let demo: InstaboxMachine[];
 
 beforeEach(async () => {
   cryptoVault.resetVault();
-  await cryptoVault.initializeVault('test-password');
+  await cryptoVault.initializeVault('test-password-long');
   firstId = await cryptoVault.addProfile('First', 'ibk_first');
   secondId = await cryptoVault.addProfile('Second', 'ibk_second');
   demo = await instaboxClient.listMachines('demo-default');

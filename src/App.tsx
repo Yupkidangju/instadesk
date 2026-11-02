@@ -8,6 +8,7 @@ import { ApiKeyModal } from './components/modals/ApiKeyModal';
 import { MasterUnlockModal } from './components/modals/MasterUnlockModal';
 import { BroadcastExecModal } from './components/modals/BroadcastExecModal';
 import { CreateVmModal } from './components/modals/CreateVmModal';
+import { cryptoVault } from './services/cryptoVault';
 
 export const App: React.FC = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
@@ -29,6 +30,18 @@ export const App: React.FC = () => {
     }, autoRefreshInterval * 1000);
     return () => clearInterval(timer);
   }, [autoRefreshInterval]);
+
+  useEffect(() => {
+    const onActivity = () => { if (cryptoVault.isUnlocked()) cryptoVault.touch(); };
+    window.addEventListener('keydown', onActivity, { capture: true });
+    window.addEventListener('pointerdown', onActivity, { capture: true });
+    window.addEventListener('touchstart', onActivity, { capture: true });
+    return () => {
+      window.removeEventListener('keydown', onActivity, { capture: true });
+      window.removeEventListener('pointerdown', onActivity, { capture: true });
+      window.removeEventListener('touchstart', onActivity, { capture: true });
+    };
+  }, []);
 
   useEffect(() => {
     if (!isSidebarOpen) return;

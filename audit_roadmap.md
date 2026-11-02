@@ -7,6 +7,7 @@
 | 로컬 보안 경계 | 앱 자산 경로 제한, sandbox/contextIsolation, 제한 IPC, 고정 API/WSS 목적지, 리다이렉트 거부, 저장 키 암호화·잠금 | [검증 기록](docs/electron/verification.md)의 단위·네이티브 스모크. 실 키의 목록·PTY 사용 확인 |
 | Windows 패키지 | x64 ZIP·EXE, 별도 위치 실행, 코드·의존성·라이선스 포함, 원본 Pages 데이터 자동 이전 없음 | ZIP 추출·실행 확인. 서명·다른 PC 미검증 |
 | 2.1.0 다중 아키텍처 릴리스 | Windows x64·Linux x64·Linux arm64 패키지, 네이티브 스모크, SHA-256, 3자산 Release | [태그 CI 41282601993](https://github.com/Yupkidangju/instadesk/actions/runs/41282601993) 4/4 성공, [v2.1.0 공개 릴리스](https://github.com/Yupkidangju/instadesk/releases/tag/v2.1.0) 자산·해시 검증 |
+| 감사 4 수정·2.1.1 | 사용자 입력 기준 잠금, PTY 준비/진단/제한 재시도, 볼트 v1→v2, 동일 키 5대 PTY·SSE 실 결과 | [수정 계약](docs/electron/audit_4_remediation.md)과 [finding별 결과](docs/audit/audit_report_4_remediation.md)에 판정 기록 |
 | 실 서비스 기능 | 유효한 키로 REST 목록/변경, SSE exec, PTY, Desktop 뷰·제어 및 잠금/재연결 | 목록·PTY·Desktop 영상 및 2.0.6 SPLIT 화면 맞춤 확인. 변경·SSE·Desktop 입력은 미검증 |
 | 게시 종료 | Pages 워크플로/게시 사이트 및 사용자 개인 Worker 제거, 감사 원본·GitHub 저장소 보존 | Pages API 404, Worker `/health` 404, `main` 푸시 및 Windows CI 통과 |
 

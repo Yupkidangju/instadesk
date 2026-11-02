@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { DesktopScreenView } from '../src/components/desktop/DesktopScreenView';
 import { instaboxClient } from '../src/services/instaboxClient';
+import { cryptoVault } from '../src/services/cryptoVault';
 import { useAppStore } from '../src/store/useAppStore';
 import type { DesktopBridge } from '../src/types/desktopBridge';
 
@@ -42,9 +43,11 @@ describe('native desktop view', () => {
     const openDesktopView = vi.fn().mockResolvedValue(undefined);
     const updateDesktopView = vi.fn().mockResolvedValue(undefined);
     const closeDesktopView = vi.fn().mockResolvedValue(undefined);
+    let onDesktopEvent: (event: { id: string; type: 'activity' | 'loaded' | 'error' }) => void = () => {};
+    const activity = vi.spyOn(cryptoVault, 'touch');
     window.instadeskDesktop = {
       isDesktop: true, openDesktopView, updateDesktopView, closeDesktopView,
-      onDesktopEvent: vi.fn().mockReturnValue(() => {}),
+      onDesktopEvent: vi.fn((callback) => { onDesktopEvent = callback; return () => {}; }),
     } as unknown as DesktopBridge;
     render(React.createElement(DesktopScreenView, {
       machineId: 'm_1', profileId: 'p1', viewOnly: true, onViewOnlyChange: vi.fn(),
@@ -54,6 +57,8 @@ describe('native desktop view', () => {
     })));
     expect(screen.queryByTitle('Desktop Stream m_1')).toBeNull();
     expect(updateDesktopView).toHaveBeenCalled();
+    act(() => onDesktopEvent({ id: 'desktop_p1_m_1', type: 'activity' }));
+    expect(activity).toHaveBeenCalledTimes(1);
     act(() => useAppStore.getState().openApiKeyModal());
     await waitFor(() => expect(closeDesktopView).toHaveBeenCalledWith('desktop_p1_m_1'));
   });

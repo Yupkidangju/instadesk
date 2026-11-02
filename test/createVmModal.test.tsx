@@ -14,7 +14,7 @@ afterEach(() => {
 describe('Create VM target selection', () => {
   it('defaults to a registered real profile when opened after registration', async () => {
     cryptoVault.resetVault();
-    await cryptoVault.initializeVault('test-password');
+    await cryptoVault.initializeVault('test-password-long');
     const id = await cryptoVault.addProfile('Production', 'ibk_test');
     useAppStore.getState().openCreateVmModal();
     render(React.createElement(CreateVmModal));

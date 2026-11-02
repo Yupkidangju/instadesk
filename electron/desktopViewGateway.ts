@@ -9,7 +9,7 @@ import {
 
 export interface DesktopViewEvent {
   id: string;
-  type: 'loaded' | 'error';
+  type: 'loaded' | 'error' | 'activity';
 }
 
 export class DesktopViewGateway {
@@ -31,6 +31,12 @@ export class DesktopViewGateway {
     view.setBackgroundColor('#050507');
     view.setBounds(this.roundBounds(request.bounds));
     view.webContents.setZoomFactor(1);
+    view.webContents.on('before-input-event', (_event, input) => {
+      if (input.type === 'keyDown') this.emitIfCurrent(request.id, view, 'activity');
+    });
+    view.webContents.on('before-mouse-event', (_event, mouse) => {
+      if (mouse.type === 'mouseDown' || mouse.type === 'mouseWheel') this.emitIfCurrent(request.id, view, 'activity');
+    });
     view.webContents.on('will-navigate', (event, url) => {
       if (!isDashboardUrl(url)) event.preventDefault();
     });

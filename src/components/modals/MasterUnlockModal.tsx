@@ -1,5 +1,5 @@
 // src/components/modals/MasterUnlockModal.tsx
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Lock, Unlock, X } from 'lucide-react';
 
@@ -8,6 +8,12 @@ export const MasterUnlockModal: React.FC = () => {
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!isUnlockModalOpen) { setPassword(''); setErrorMsg(null); }
+  }, [isUnlockModalOpen]);
+
+  const handleClose = () => { setPassword(''); setErrorMsg(null); closeUnlockModal(); };
 
   if (!isUnlockModalOpen) return null;
 
@@ -23,6 +29,7 @@ export const MasterUnlockModal: React.FC = () => {
       }
     } catch (err: unknown) {
       setErrorMsg((err as Error).message || 'Invalid master password');
+      setPassword('');
     } finally {
       setIsSubmitting(false);
     }
@@ -37,7 +44,7 @@ export const MasterUnlockModal: React.FC = () => {
             <span className="text-sm">VAULT LOCKED // AUTH REQUIRED</span>
           </div>
           <button
-            onClick={closeUnlockModal}
+            onClick={handleClose}
             className="p-1 text-zinc-500 hover:text-white transition-colors"
           >
             <X className="w-4 h-4" />
@@ -68,7 +75,7 @@ export const MasterUnlockModal: React.FC = () => {
           <div className="flex space-x-2 pt-2">
             <button
               type="button"
-              onClick={closeUnlockModal}
+              onClick={handleClose}
               className="neo-btn flex-1 py-2 text-zinc-400 hover:text-white"
             >
               CANCEL

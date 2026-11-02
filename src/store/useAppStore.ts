@@ -23,7 +23,6 @@ interface AppStoreState {
   // --- 워크스페이스 타일 상태 ---
   tiles: WorkspaceTile[];
   gridMode: GridMode;
-  maxSessionsQuota: number; // 8
   sessionStates: Record<string, { profileId: string; status: 'connecting' | 'connected' }>;
   reserveSession: (tileId: string, profileId: string) => boolean;
   activateSession: (tileId: string) => void;
@@ -45,6 +44,7 @@ interface AppStoreState {
   unlockVault: (password: string) => Promise<boolean>;
   lockVault: () => void;
   initializeVault: (password: string) => Promise<void>;
+  changeMasterPassword: (currentPassword: string, newPassword: string) => Promise<void>;
   addProfile: (label: string, apiKey: string) => Promise<string>;
   removeProfile: (id: string) => void;
 
@@ -124,12 +124,10 @@ export const useAppStore = create<AppStoreState>((set, get) => {
 
     tiles: [],
     gridMode: '2x1',
-    maxSessionsQuota: 8,
     sessionStates: {},
     reserveSession: (tileId, profileId) => {
-      const { sessionStates, maxSessionsQuota } = get();
+      const { sessionStates } = get();
       if (sessionStates[tileId]) return true;
-      if (Object.values(sessionStates).filter((entry) => entry.profileId === profileId).length >= maxSessionsQuota) return false;
       set({ sessionStates: { ...sessionStates, [tileId]: { profileId, status: 'connecting' } } });
       return true;
     },
@@ -181,6 +179,10 @@ export const useAppStore = create<AppStoreState>((set, get) => {
         isVaultUnlocked: true,
         isUnlockModalOpen: false,
       });
+    },
+
+    changeMasterPassword: async (currentPassword: string, newPassword: string) => {
+      await cryptoVault.changeMasterPassword(currentPassword, newPassword);
     },
 
     addProfile: async (label: string, apiKey: string) => {

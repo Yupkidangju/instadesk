@@ -17,7 +17,7 @@ export interface EncryptedProfileRecord {
  * localStorage에 저장되는 전체 볼트 메타데이터
  */
 export interface LocalVaultStorage {
-  version: 1;
+  version: 1 | 2;
   salt: string;           // 마스터 키 파생용 고유 솔트 (Base64)
   verifierCiphertext: string; // 마스터 비밀번호 일치 검증용 암호화된 토큰
   verifierIv: string;     // 검증용 IV (Base64)

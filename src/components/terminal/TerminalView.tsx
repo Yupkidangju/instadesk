@@ -6,6 +6,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import { instaboxClient } from '../../services/instaboxClient';
 import { RefreshCw, Trash2, Wifi, WifiOff } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
+import { describeTerminalFailure, retryDelayMs, type TerminalFailure } from './terminalRetry';
 
 interface TerminalViewProps {
   tileId: string;
@@ -26,9 +27,12 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
   const termRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
 
-  const [status, setStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
+  const [status, setStatus] = useState<'connecting' | 'negotiating' | 'connected' | 'disconnected'>('connecting');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [retryGeneration, setRetryGeneration] = useState(0);
+  const [retryInfo, setRetryInfo] = useState<string | null>(null);
+  const retryAttemptRef = useRef(0);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -76,13 +80,37 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
     fitAddonRef.current = fitAddon;
 
     let isDisposed = false;
+    let failed = false;
+    let ready = false;
     let unregisterDesktop: (() => void) | null = null;
     const bridge = window.instadeskDesktop;
+
+    const fail = (failure: TerminalFailure) => {
+      if (isDisposed || failed) return;
+      failed = true;
+      ready = false;
+      useAppStore.getState().releaseSession(tileId);
+      setStatus('disconnected');
+      setErrorMessage(describeTerminalFailure(failure));
+      const nextAttempt = retryAttemptRef.current + 1;
+      const delay = retryDelayMs(failure, nextAttempt);
+      if (delay !== null && useAppStore.getState().isVaultUnlocked) {
+        setRetryInfo(`Retry ${nextAttempt}/3 in ${Math.ceil(delay / 1000)}s`);
+        retryTimerRef.current = setTimeout(() => {
+          retryTimerRef.current = null;
+          if (isDisposed || !useAppStore.getState().isVaultUnlocked ||
+              !useAppStore.getState().profiles.some((profile) => profile.id === profileId)) return;
+          retryAttemptRef.current = nextAttempt;
+          setRetryGeneration((value) => value + 1);
+        }, delay);
+      } else setRetryInfo(null);
+    };
 
     // 2. 터미널 연결 시작
     const connectTerminal = async () => {
       setStatus('connecting');
       setErrorMessage(null);
+      setRetryInfo(null);
 
       term.writeln('\x1b[38;5;244m[INSTABOX DECK] Initializing terminal PTY session...\x1b[0m');
 
@@ -130,9 +158,7 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
 
       // 실제 PTY 소켓은 Electron 메인 프로세스가 소유한다.
       try {
-        if (!useAppStore.getState().reserveSession(tileId, profileId)) {
-          throw new Error('Eight PTY connections are already opening or active.');
-        }
+        useAppStore.getState().reserveSession(tileId, profileId);
         const { url, protocols } = await instaboxClient.getTerminalWebSocketUrl(
           profileId,
           machineId,
@@ -147,39 +173,43 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
           unregisterDesktop = bridge.onTerminalEvent((event) => {
             if (isDisposed || event.id !== tileId) return;
             if (event.type === 'open') {
+              setStatus('negotiating');
+            } else if (event.type === 'ready') {
+              if (failed) return;
+              ready = true;
               setStatus('connected');
+              retryAttemptRef.current = 0;
               useAppStore.getState().activateSession(tileId);
               term.writeln('\x1b[1;32m● CONNECTED TO INSTABOX PTY GATEWAY\x1b[0m\r\n');
               void bridge.resizeTerminal(tileId, term.cols, term.rows).catch(() => {});
             } else if (event.type === 'data') {
-              if (typeof event.data === 'string') {
-                try {
-                  const message = JSON.parse(event.data);
-                  if (message.type === 'exit') {
-                    term.writeln(`\r\n\x1b[33m[Session exited with code ${message.code}]\x1b[0m`);
-                    void bridge.closeTerminal(tileId);
-                    setStatus('disconnected');
-                  }
-                } catch { term.write(event.data); }
-              } else if (event.data) term.write(event.data);
-            } else {
+              if (!failed && event.data) term.write(event.data);
+            } else if (event.type === 'exit') {
+              failed = true;
               useAppStore.getState().releaseSession(tileId);
               setStatus('disconnected');
-              if (event.type === 'error') setErrorMessage('PTY connection failed. Check the key and machine state.');
+              term.writeln(`\r\n\x1b[33m[Session exited with code ${event.exitCode ?? 'unknown'}]\x1b[0m`);
+              void bridge.closeTerminal(tileId);
+            } else if (event.type === 'error') {
+              fail(event);
+            } else if (event.type === 'close' && !failed) {
+              if (event.closeCode === 1000) fail({ category: 'server', closeCode: 1000, at: event.at });
+              else fail({ category: 'network', closeCode: event.closeCode, at: event.at });
             }
           });
           await bridge.openTerminal({ id: tileId, profileId, sessionName, url, protocols: protocols ?? [] });
           if (isDisposed) { void bridge.closeTerminal(tileId); return; }
-          term.onData((data) => { void bridge.sendTerminal(tileId, data).catch(() => {}); });
+          term.onData((data) => { if (ready && !failed) void bridge.sendTerminal(tileId, data).catch(() => {}); });
           term.onResize(({ cols, rows }) => { void bridge.resizeTerminal(tileId, cols, rows).catch(() => {}); });
           return;
         }
         throw new Error('Electron desktop bridge unavailable');
       } catch (err: unknown) {
-        useAppStore.getState().releaseSession(tileId);
-        if (isDisposed) return;
-        setStatus('disconnected');
-        setErrorMessage((err as Error).message || 'Failed to open terminal connection');
+        const status = (err as { status?: number }).status;
+        const category = status === 401 || status === 403 ? 'auth' : status === 409 ? 'machine' :
+          status === 429 ? 'rate_limit' : status === 503 ? 'unavailable' : status ? 'server' : 'network';
+        fail({ category, httpStatus: status, retryAfterMs: (err as { retryAfterMs?: number }).retryAfterMs,
+          at: new Date().toISOString() });
       }
     };
 
@@ -193,6 +223,8 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
 
     return () => {
       isDisposed = true;
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
       resizeObserver.disconnect();
       unregisterDesktop?.();
       if (bridge) void bridge.closeTerminal(tileId);
@@ -202,6 +234,10 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
   }, [tileId, machineId, profileId, sessionName, retryGeneration]);
 
   const handleReconnect = () => {
+    if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    retryTimerRef.current = null;
+    retryAttemptRef.current = 0;
+    setRetryInfo(null);
     if (termRef.current) {
       termRef.current.clear();
     }
@@ -271,7 +307,7 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
       {/* 에러 바 */}
       {errorMessage && (
         <div className="bg-red-950/60 border-b border-red-800 text-red-300 text-xs font-mono px-3 py-1.5 flex items-center justify-between">
-          <span>{errorMessage}</span>
+          <span>{errorMessage}{retryInfo ? ` · ${retryInfo}` : ''}</span>
           <button
             onClick={handleReconnect}
             className="underline hover:text-white ml-2 text-[10px]"

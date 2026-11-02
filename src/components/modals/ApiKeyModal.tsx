@@ -20,6 +20,7 @@ export const ApiKeyModal: React.FC = () => {
     isVaultInitialized,
     isVaultUnlocked,
     initializeVault,
+    changeMasterPassword,
     unlockVault,
     lockVault,
     profiles,
@@ -32,6 +33,9 @@ export const ApiKeyModal: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [newProfileLabel, setNewProfileLabel] = useState('');
   const [newApiKey, setNewApiKey] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [nextPassword, setNextPassword] = useState('');
+  const [nextPasswordConfirm, setNextPasswordConfirm] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<{ id: string; label: string } | null>(null);
@@ -39,11 +43,17 @@ export const ApiKeyModal: React.FC = () => {
   const [isValidating, setIsValidating] = useState(false);
 
   useEffect(() => {
-    if (!isVaultUnlocked) setPendingDelete(null);
-  }, [isVaultUnlocked]);
+    if (!isVaultUnlocked || !isApiKeyModalOpen) {
+      setPendingDelete(null);
+      setMasterPassword(''); setConfirmPassword(''); setNewApiKey('');
+      setCurrentPassword(''); setNextPassword(''); setNextPasswordConfirm('');
+    }
+  }, [isVaultUnlocked, isApiKeyModalOpen]);
 
   const handleClose = () => {
     setPendingDelete(null);
+    setMasterPassword(''); setConfirmPassword(''); setNewApiKey('');
+    setCurrentPassword(''); setNextPassword(''); setNextPasswordConfirm('');
     closeApiKeyModal();
   };
 
@@ -69,11 +79,13 @@ export const ApiKeyModal: React.FC = () => {
     setErrorMsg(null);
     setSuccessMsg(null);
 
-    if (masterPassword.length < 6) {
-      setErrorMsg('Master password must be at least 6 characters.');
+    if (masterPassword.length < 15) {
+      setMasterPassword(''); setConfirmPassword('');
+      setErrorMsg('Master passphrase must be at least 15 characters.');
       return;
     }
     if (masterPassword !== confirmPassword) {
+      setMasterPassword(''); setConfirmPassword('');
       setErrorMsg('Passwords do not match.');
       return;
     }
@@ -85,6 +97,7 @@ export const ApiKeyModal: React.FC = () => {
       setConfirmPassword('');
     } catch (err: unknown) {
       setErrorMsg((err as Error).message);
+      setMasterPassword(''); setConfirmPassword('');
     }
   };
 
@@ -99,6 +112,7 @@ export const ApiKeyModal: React.FC = () => {
       }
     } catch (err: unknown) {
       setErrorMsg((err as Error).message);
+      setMasterPassword('');
     }
   };
 
@@ -110,6 +124,7 @@ export const ApiKeyModal: React.FC = () => {
 
     const cleanKey = newApiKey.trim();
     if (!cleanKey.startsWith('ibk_')) {
+      setNewApiKey('');
       setErrorMsg('InstaBox API key must start with "ibk_".');
       setIsValidating(false);
       return;
@@ -136,9 +151,24 @@ export const ApiKeyModal: React.FC = () => {
       }
     } catch (err: unknown) {
       setErrorMsg((err as Error).message);
+      setNewApiKey('');
     } finally {
       setIsValidating(false);
     }
+  };
+
+  const handleChangePassword = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setErrorMsg(null); setSuccessMsg(null);
+    const oldValue = currentPassword;
+    const newValue = nextPassword;
+    const matches = nextPassword === nextPasswordConfirm;
+    setCurrentPassword(''); setNextPassword(''); setNextPasswordConfirm('');
+    if (!matches) { setErrorMsg('Passphrases do not match.'); return; }
+    try {
+      await changeMasterPassword(oldValue, newValue);
+      setSuccessMsg('Master passphrase changed. Encrypted profiles were preserved.');
+    } catch (error) { setErrorMsg((error as Error).message); }
   };
 
   return (
@@ -190,12 +220,12 @@ export const ApiKeyModal: React.FC = () => {
             {!isVaultInitialized ? (
               <form onSubmit={handleInitVault} className="space-y-2">
                 <p className="text-zinc-400 text-[11px]">
-                  Create a master password to encrypt your API keys. Keys are stored in this app's local vault and decrypted only for a request.
+                  Create a passphrase of at least 15 characters. Keys are stored in this app's local vault and decrypted only for a request.
                 </p>
                 <div className="grid grid-cols-2 gap-2">
                   <input
                     type="password"
-                    placeholder="MASTER PASSWORD (MIN 6 CHARS)"
+                    placeholder="MASTER PASSPHRASE (MIN 15 CHARS)"
                     value={masterPassword}
                     onChange={(e) => setMasterPassword(e.target.value)}
                     className="bg-zinc-950 border border-zinc-800 p-2 text-xs focus:outline-none focus:border-zinc-500"
@@ -250,6 +280,17 @@ export const ApiKeyModal: React.FC = () => {
               </div>
             )}
           </div>
+
+          {isVaultUnlocked && (
+            <form onSubmit={handleChangePassword} className="p-3.5 border border-zinc-800 bg-zinc-900/60 space-y-2">
+              <div className="font-bold text-zinc-200">CHANGE MASTER PASSPHRASE</div>
+              <p className="text-zinc-400 text-[11px]">Older vaults migrate without losing profiles. If your original passphrase was short, replace it here with at least 15 characters. This does not rotate an InstaBox API key.</p>
+              <input type="password" placeholder="CURRENT MASTER PASSPHRASE" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required className="w-full bg-zinc-950 border border-zinc-800 p-2 text-xs" />
+              <input type="password" placeholder="NEW MASTER PASSPHRASE (MIN 15 CHARS)" value={nextPassword} onChange={e => setNextPassword(e.target.value)} required className="w-full bg-zinc-950 border border-zinc-800 p-2 text-xs" />
+              <input type="password" placeholder="CONFIRM NEW PASSPHRASE" value={nextPasswordConfirm} onChange={e => setNextPasswordConfirm(e.target.value)} required className="w-full bg-zinc-950 border border-zinc-800 p-2 text-xs" />
+              <button type="submit" className="neo-btn w-full py-1.5">CHANGE PASSPHRASE</button>
+            </form>
+          )}
 
           {/* 2. 새 API 키 등록 폼 */}
           {isVaultUnlocked && (

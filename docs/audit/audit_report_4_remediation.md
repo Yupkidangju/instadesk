@@ -1,0 +1,43 @@
+# 감사 4 수정·검증 기록 — InstaDesk 2.1.1
+
+작성일: 2026-11-02 (Asia/Seoul). 기준 소스: `main`의 `da221a0`에서 시작한 2.1.1 변경. 이 문서는 **구현자의 재검증 기록**이며 독립 감사 PASS를 대신하지 않는다. 원본 `docs/audit/audit_report_4.md`(SHA-256 `a6ea9f6d13a0f81d768ec2bff1f465e190ea0990786d419083082f5b4a359bd0`)와 이전 보고서는 수정하지 않았다.
+
+## 범위와 계약
+
+[수정 계약](../electron/audit_4_remediation.md), `spec.md`, `designs.md`, `DESIGN_DECISIONS.md`를 코드 전에 갱신했다. InstaBox [terminal OpenAPI](https://api.instabox.sh/v1/openapi.json)는 서버의 user당 열린 PTY 최대 8개와 `session`/`taken`/`error`/`exit` 프레임을 명시한다. [Limits](https://instabox.sh/docs/limits)의 SSE `exec` 동시 한도는 별도다. PBKDF2 작업량 비교에는 [OWASP Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)의 600,000회 권고를 사용했다. Electron의 버전 없는 `userData`·`sessionData` 경로는 [공식 app API](https://www.electronjs.org/docs/latest/api/app)를 확인했다.
+
+사용자는 후속 지시에서 **실 동일 키 5대 PTY·SSE 검증을 이번 작업에서 제외하고 직접 확인**하기로 했다. 다음 표의 “모의 통과”는 실 서버 성공을 뜻하지 않는다.
+
+| 원본 finding | 수정·현재 판정 | 재현/검증 증거 | 남은 조건 |
+| --- | --- | --- | --- |
+| IMP-F007 | 계약·화면 수정, 모의 통과 | `spec.md` 5.2, `HeaderBar.tsx`, `useAppStore.ts`; 로컬 프로필별 8개 차단 제거, user당 서버 한도·로컬 관측치 분리. `auditRemediation.test.ts` | 여러 키가 동일 user인지, 외부 PTY 수, 실제 8→9·429는 실 서버 미검증 |
+| IMP-F008 / SEC-F005 | 자동 잠금 수정, 모의 통과 | `cryptoVault.ts`의 키 소비는 타이머를 연장하지 않는다. `App.tsx` 사용자 입력과 `DesktopScreenView.tsx` 네이티브 입력만 연장. `audit4AutoLock.test.tsx`: 10초 조회 중 15분 잠금·입력 후 연장; `cryptoVault.test.ts`: 타이머 지연 뒤 재활성 방지. 잠금/요청 취소는 `auditRemediation.test.ts`, PTY 종료는 `terminalReconnect.test.tsx` | 실제 15분 장시간 앱 사용은 사용자 수용 검사 |
+| IMP-F009 | UI·가이드 수정, 모의 통과 | `BroadcastExecModal.tsx`, `README.md`, `BUILD_GUIDE.md`에 PTY 독립 SSE 명시. `audit3Ui.test.tsx`: 열린 PTY 0개에서 5대 중 4개 성공·1개 실패를 별도 표시 | 실 서버 5대 SSE는 사용자 직접 확인 |
+| DBG-F011 | 준비 판정 수정, 모의 통과 | `terminalGateway.ts`는 `open`과 `ready(session)`을 분리하고 준비 전 입력을 거부한다. 15초 준비 타임아웃, `taken`/`error`/`exit` 분류. `terminalGateway.test.ts`, `terminalReconnect.test.tsx` | 실 5 PTY의 `session` 신호·점유 순서 확인 필요 |
+| DBG-F012 | 진단·제한 회복 수정, 모의 통과 | HTTP 401/403/409/429/503, `Retry-After`, WebSocket close code/시간을 허용된 범주로 전달. 서버 임의 본문·서브프로토콜 토큰·URL은 이벤트에 넣지 않음. `terminalRetryPolicy.test.ts` 최대 3회·지연, `terminalReconnect.test.tsx` 5개 중 3개 일시 실패 회복·잠금/타일 닫기/프로필 삭제 시 중단, `terminalGateway.test.ts` 오류 순서 | 사용자의 원래 3개 실패의 서버 측 HTTP/WS 원인은 미확정. 실 429·503 회복은 직접 확인 필요 |
+| DBG-F013 | 기존 모의 판정 유지·확대 | `audit3Ui.test.tsx`의 5대 독립 SSE 결과 및 원본 보고서의 브라우저 모의 5대 EXIT 0 | 실 5대 SSE HTTP·exit code는 사용자 직접 확인 |
+| SEC-F006 | 입력 수명 수정, 모의 통과 | `ApiKeyModal.tsx`, `MasterUnlockModal.tsx`에서 닫기·잠금·실패 후 비밀 입력 상태를 지움. `audit4Secrets.test.tsx` 재열기 DOM 검사 | JS 문자열의 물리적 메모리 소거는 보장하지 않음 |
+| SEC-F007 | v1→v2 이행 구현, 모의 통과 | `cryptoVault.ts` 신규 600,000회·15자, v1 읽기 후 전 프로필 재암호화·단일 저장, 암호문구 변경. `cryptoVault.test.ts` v1 5개 보존, 저장 실패 시 원본 불변·잠금 유지, v2 5개 재해제·평문 부재 | 실제 사용자 v1 볼트는 잠겨 있어 마스터 암호 기반 이행을 실행하지 않음. 오래된 약한 암호는 사용자가 변경해야 함 |
+
+## 추가 발견 REM-F001 — 볼트 프로필 덮어쓰기 경합
+
+원본 보고서의 직접 finding은 아니지만 SEC-F007 데이터 보존과 SEC-F005 자동 조회에 연결된다. `withDecryptedKey()`가 조회 시작 시 읽은 볼트 전체를 복호화 이후 `lastUsedAt`과 함께 다시 저장했다. 그 사이 새 프로필을 추가하면 오래된 스냅샷이 새 키를 지웠다. `cryptoVault.test.ts`의 “polling decrypt finishes later”를 먼저 추가해 **수정 전 `['First']`, 기대 `['First','Second']` 실패**를 확인했다. 저장 직전 최신 레코드를 재조회·병합하도록 바꾼 뒤 통과했다. 이는 실제 사용자 5개 프로필이 보이지 않는 사건의 **가능한 원인**이지만, 서버/사용자 로그 없이 그 사건의 직접 원인으로 단정하지 않는다.
+
+## 버전별 볼트 보존
+
+Electron `userData`와 `sessionData`를 OS 사용자별 버전 없는 `InstaDesk` 경로로 명시하고, localStorage 키 `instabox_deck_vault_v1`을 v2에서도 유지한다. `userDataPath.test.ts`는 패키지 버전에 무관한 경로를 검사한다. Windows GUI에서 2.1.0과 최종 2.1.1 모두 같은 기존 암호화 프로필 **1개가 잠긴 상태로 표시**됐다. 이 검사는 실제 저장된 1개의 존재만 확인한다. 사용자가 오늘 등록했다고 보고한 **5개 키 프로필은 현재 접근 가능한 Electron 저장 기록에서 발견하지 못했다**. 새 볼트를 초기화하거나 기존 레코드를 삭제하지 않았다. 사용자 직접 확인 때 다른 OS 계정·실행 위치와 재등록 후 재실행 결과를 비교해야 한다.
+
+## 실행 검증
+
+| 검사 | 결과 |
+| --- | --- |
+| `npm run typecheck` | 성공 |
+| `npm test` | 20파일 82테스트 통과 |
+| `npm audit --audit-level=high` | 알려진 권고 0건 |
+| `git diff --check` | 성공 (Windows 줄끝 변환 경고만 출력) |
+| `npm run package:win` | Windows x64 최종 패키지 성공; 로컬 ZIP 158,397,920 bytes, SHA-256 `e40140ce2921f5bfb2594aa624818e025fd3a28bfeda77decad7a46a0e87ba67` |
+| 패키지 `--smoke-test` | 최종 Windows x64 EXE 실행/렌더러 마운트 exit 0 |
+| Linux x64·arm64 CI | 태그 CI 결과 보충 |
+| 2.1.1 공개 자산 | 릴리스 URL·SHA-256 결과 보충 |
+
+**판정:** 수정 범위의 자체 회귀는 통과했다. 독립 재감사와 실 5대 PTY·SSE, 기존 사용자의 5개 키 프로필 복원은 **HOLD/미검증**이다. 사용자 직접 수용 검사에서 PTY 5대를 열어 타일별 `session` 준비/HTTP·WS 범주/자동 재시도 결과를 확인하고, 별도 읽기 전용 Broadcast 5대의 개별 exit code를 확인해야 한다. 비밀·명령 출력은 보고서에 적지 않는다.

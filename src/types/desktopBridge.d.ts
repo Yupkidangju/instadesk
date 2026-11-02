@@ -8,8 +8,14 @@ export interface DesktopBridge {
   closeAll(): Promise<void>;
   onTerminalEvent(callback: (event: {
     id: string;
-    type: 'open' | 'data' | 'error' | 'close';
+    type: 'open' | 'ready' | 'data' | 'error' | 'close' | 'exit';
     data?: string | Uint8Array;
+    category?: 'auth' | 'machine' | 'rate_limit' | 'unavailable' | 'network' | 'taken' | 'server' | 'protocol';
+    httpStatus?: number;
+    retryAfterMs?: number;
+    closeCode?: number;
+    exitCode?: number;
+    at?: string;
   }) => void): () => void;
   openDesktopView(request: {
     id: string;
@@ -19,7 +25,7 @@ export interface DesktopBridge {
   }): Promise<void>;
   updateDesktopView(id: string, bounds: { x: number; y: number; width: number; height: number }): Promise<void>;
   closeDesktopView(id: string): Promise<void>;
-  onDesktopEvent(callback: (event: { id: string; type: 'loaded' | 'error' }) => void): () => void;
+  onDesktopEvent(callback: (event: { id: string; type: 'loaded' | 'error' | 'activity' }) => void): () => void;
 }
 
 declare global {

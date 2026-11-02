@@ -63,7 +63,9 @@
   - 잠금 상태: `[■ LOCKED]` (Zinc 600 버튼, 마스터 패스워드 입력 유도).
   - 잠금 해제 상태: `[● VAULT UNLOCKED]` (로컬 저장 암호화, 에메랄드 도트).
 - **세션 쿼터 미터**:
-  - `PTY: {total} TOTAL · MAX {profileCount} / 8 PER KEY` (프로필별 최대 6개 이상 시 노란색, 8개 시 붉은색 경고). 데스크톱 뷰와 외부 세션은 포함되지 않는다.
+  - `PTY: {localCount} LOCAL · 8 / USER SERVER LIMIT`는 이 앱의 시도/열린 PTY만 보여준다. 외부 세션·서로 다른 프로필의 동일 user 여부는 알 수 없고 서버 오류가 최종 판정이다. 데스크톱/SSE는 이 숫자에 합산하지 않는다.
+  - PTY 상태는 CONNECTING(티켓/소켓), NEGOTIATING(`open` 뒤 `session` 전), LIVE(`session` 뒤), DISCONNECTED로 구분한다. 오류 바에는 비밀 없는 상태 범주·코드·시각을 표시하고 재시도 예정/횟수와 수동 재연결을 제공한다.
+  - KEY VAULT의 입력 비밀은 닫기·실패·잠금 후 빈 값이다. 기존 약한 암호는 긴 암호문구로 변경하는 UI를 제공한다. 좁은 화면에서도 문구와 오류를 읽을 수 있게 줄바꿈한다.
 - **그리드 레이아웃 선택기**:
   - `[1x1]`, `[2x1]`, `[2x2]`, `[AUTO]` 토글 버튼 세트 (활성 탭은 `bg-zinc-100 text-zinc-950 font-bold`).
 - **전역 액션**:

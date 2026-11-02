@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EventEmitter } from 'node:events';
 import type WebSocket from 'ws';
 import { TerminalGateway } from '../electron/terminalGateway';
@@ -31,6 +31,7 @@ function setup() {
 }
 
 describe('Electron terminal gateway', () => {
+  afterEach(() => vi.useRealTimers());
   it('restricts ticket destination and protocols before constructing a socket', () => {
     const { gateway } = setup();
     for (const url of [
@@ -59,6 +60,7 @@ describe('Electron terminal gateway', () => {
     const socket = FakeSocket.instances[0];
     socket.readyState = 1;
     socket.emit('open');
+    socket.emit('message', Buffer.from(JSON.stringify({ type: 'session', session: 'main', persistent: true })), false);
     socket.emit('message', Buffer.from('hello'), true);
     gateway.send('one', 'ls\r');
     gateway.resize('one', 100, 30);
@@ -85,5 +87,66 @@ describe('Electron terminal gateway', () => {
     expect(emit).not.toHaveBeenCalled();
     gateway.closeAll();
     expect(second.closed).toBe(true);
+  });
+
+  it('waits for a session control before ready and forwards safe refusal details', () => {
+    const { gateway, emit } = setup();
+    gateway.open(valid());
+    const socket = FakeSocket.instances[0];
+    socket.readyState = 1;
+    socket.emit('open');
+    expect(emit).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'ready' }));
+    expect(() => gateway.send('one', 'early')).toThrow('not ready');
+    socket.emit('message', Buffer.from(JSON.stringify({ type: 'session', session: 'main', persistent: true })), false);
+    expect(emit).toHaveBeenCalledWith(expect.objectContaining({ id: 'one', type: 'ready' }));
+    socket.emit('message', Buffer.from(JSON.stringify({ type: 'taken' })), false);
+    expect(emit).toHaveBeenCalledWith(expect.objectContaining({ id: 'one', type: 'error', category: 'taken' }));
+    expect(JSON.stringify(emit.mock.calls)).not.toContain('instabox-access-token');
+  });
+
+  it('classifies HTTP 429 with Retry-After without exposing response bodies', () => {
+    const { gateway, emit } = setup();
+    gateway.open(valid());
+    const socket = FakeSocket.instances[0];
+    socket.emit('unexpected-response', {}, { statusCode: 429, headers: { 'retry-after': '2' } });
+    expect(emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'error', category: 'rate_limit', httpStatus: 429, retryAfterMs: 2000 }));
+    socket.emit('error', new Error('Unexpected server response: 429'));
+    expect(emit.mock.calls.filter((call) => call[0].type === 'error')).toHaveLength(1);
+  });
+
+  it.each([[401, 'auth'], [403, 'auth'], [409, 'machine'], [503, 'unavailable']] as const)(
+    'classifies HTTP %i as %s', (statusCode, category) => {
+      const { gateway, emit } = setup();
+      gateway.open(valid());
+      FakeSocket.instances[0].emit('unexpected-response', {}, { statusCode, headers: {} });
+      expect(emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'error', category, httpStatus: statusCode }));
+    }
+  );
+
+  it('forwards server error and exit as safe categories and retains close code', () => {
+    const { gateway, emit } = setup();
+    gateway.open(valid());
+    const socket = FakeSocket.instances[0];
+    socket.emit('message', Buffer.from(JSON.stringify({ type: 'error', message: 'secret server body' })), false);
+    expect(emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'error', category: 'server' }));
+    expect(JSON.stringify(emit.mock.calls)).not.toContain('secret server body');
+    socket.emit('close', 1011, Buffer.from('secret close reason'));
+    expect(emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'close', closeCode: 1011 }));
+    expect(JSON.stringify(emit.mock.calls)).not.toContain('secret close reason');
+    gateway.open(valid());
+    FakeSocket.instances[1].emit('message', Buffer.from(JSON.stringify({ type: 'exit', code: 0 })), false);
+    expect(emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'exit', exitCode: 0 }));
+  });
+
+  it('times out a socket that opens but never receives its session signal', () => {
+    vi.useFakeTimers();
+    const { gateway, emit } = setup();
+    gateway.open(valid());
+    const socket = FakeSocket.instances[0];
+    socket.readyState = 1;
+    socket.emit('open');
+    vi.advanceTimersByTime(15_000);
+    expect(emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'error', category: 'network' }));
+    expect(socket.closed).toBe(true);
   });
 });

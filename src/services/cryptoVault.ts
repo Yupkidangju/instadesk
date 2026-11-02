@@ -3,7 +3,9 @@ import { LocalVaultStorage, EncryptedProfileRecord } from '../types/vault';
 
 const STORAGE_KEY = 'instabox_deck_vault_v1';
 const VERIFIER_PLAINTEXT = 'INSTABOX_DECK_E2EE_VERIFIER_TOKEN_OK';
-const PBKDF2_ITERATIONS = 100_000;
+const LEGACY_ITERATIONS = 100_000;
+const CURRENT_ITERATIONS = 600_000;
+const MIN_PASSPHRASE_LENGTH = 15;
 
 export class VaultLockedError extends Error {
   constructor(message = 'Vault is locked. Master password required.') {
@@ -22,6 +24,7 @@ export class VaultInvalidPasswordError extends Error {
 // 런타임 메모리 상태 (세션 동안만 보관되며, 페이지 새로고침 시 초기화)
 class CryptoVaultManager {
   private masterKey: CryptoKey | null = null;
+  private operationEpoch = 0;
   private lastActivityAt: number = Date.now();
   private autoLockMinutes: number = 15;
   private autoLockTimer: NodeJS.Timeout | null = null;
@@ -57,6 +60,11 @@ class CryptoVaultManager {
   }
 
   public touch() {
+    if (this.masterKey && this.autoLockMinutes > 0 &&
+        Date.now() - this.lastActivityAt >= this.autoLockMinutes * 60 * 1000) {
+      this.lock();
+      return;
+    }
     this.resetActivityTimer();
   }
 
@@ -72,6 +80,8 @@ class CryptoVaultManager {
    * 현재 마스터 키가 메모리에 잠금 해제되어 있는지 확인
    */
   public isUnlocked(): boolean {
+    if (this.masterKey && this.autoLockMinutes > 0 &&
+        Date.now() - this.lastActivityAt >= this.autoLockMinutes * 60 * 1000) this.lock();
     return this.masterKey !== null;
   }
 
@@ -83,6 +93,7 @@ class CryptoVaultManager {
    * 볼트 강제 잠금 (메모리에서 마스터 키 즉시 소멸)
    */
   public lock(): void {
+    this.operationEpoch += 1;
     this.masterKey = null;
     if (this.autoLockTimer) {
       clearTimeout(this.autoLockTimer);
@@ -95,12 +106,14 @@ class CryptoVaultManager {
    * 신규 볼트 생성 및 마스터 패스워드 설정
    */
   public async initializeVault(password: string, autoLockMinutes = 15): Promise<void> {
-    if (!password || password.length < 6) {
-      throw new Error('Master password must be at least 6 characters.');
+    if (this.isInitialized()) throw new Error('Vault already initialized.');
+    const epoch = this.operationEpoch;
+    if (!password || password.length < MIN_PASSPHRASE_LENGTH) {
+      throw new Error('Master passphrase must be at least 15 characters.');
     }
 
     const salt = crypto.getRandomValues(new Uint8Array(16));
-    const derivedKey = await this.deriveKey(password, salt);
+    const derivedKey = await this.deriveKey(password, salt, CURRENT_ITERATIONS);
 
     // 비밀번호 검증용 토큰 암호화
     const verifierIv = crypto.getRandomValues(new Uint8Array(12));
@@ -112,7 +125,7 @@ class CryptoVaultManager {
     );
 
     const vaultData: LocalVaultStorage = {
-      version: 1,
+      version: 2,
       salt: this.bytesToBase64(salt),
       verifierCiphertext: this.bytesToBase64(new Uint8Array(verifierEncrypted)),
       verifierIv: this.bytesToBase64(verifierIv),
@@ -120,6 +133,7 @@ class CryptoVaultManager {
       autoLockMinutes,
     };
 
+    if (epoch !== this.operationEpoch || this.isInitialized()) throw new Error('Vault changed during initialization.');
     localStorage.setItem(STORAGE_KEY, JSON.stringify(vaultData));
     this.masterKey = derivedKey;
     this.autoLockMinutes = autoLockMinutes;
@@ -131,14 +145,16 @@ class CryptoVaultManager {
    * 마스터 비밀번호로 볼트 잠금 해제
    */
   public async unlock(password: string): Promise<boolean> {
+    const epoch = this.operationEpoch;
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
       throw new Error('Vault is not initialized.');
     }
 
     const vaultData: LocalVaultStorage = JSON.parse(raw);
+    if (vaultData.version !== 1 && vaultData.version !== 2) throw new Error('Unsupported vault version');
     const salt = this.base64ToBytes(vaultData.salt);
-    const candidateKey = await this.deriveKey(password, salt);
+    const candidateKey = await this.deriveKey(password, salt, vaultData.version === 1 ? LEGACY_ITERATIONS : CURRENT_ITERATIONS);
 
     // 검증 토큰 복호화 테스트
     try {
@@ -156,14 +172,64 @@ class CryptoVaultManager {
         throw new VaultInvalidPasswordError();
       }
 
-      this.masterKey = candidateKey;
-      this.autoLockMinutes = vaultData.autoLockMinutes || 15;
-      this.resetActivityTimer();
-      this.notify();
-      return true;
     } catch {
       throw new VaultInvalidPasswordError();
     }
+    // v1 원본을 유지한 채 전 프로필의 재암호화가 끝난 경우에만 한 번 저장한다.
+    const activeKey = vaultData.version === 1
+      ? await this.reencryptVault(vaultData, candidateKey, password, raw, epoch)
+      : candidateKey;
+    if (epoch !== this.operationEpoch) throw new VaultLockedError();
+    this.masterKey = activeKey;
+    this.autoLockMinutes = vaultData.autoLockMinutes || 15;
+    this.resetActivityTimer();
+    this.notify();
+    return true;
+  }
+
+  public async changeMasterPassword(currentPassword: string, newPassword: string): Promise<void> {
+    if (!this.isUnlocked()) throw new VaultLockedError();
+    const epoch = this.operationEpoch;
+    if (newPassword.length < MIN_PASSPHRASE_LENGTH) throw new Error('Master passphrase must be at least 15 characters.');
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) throw new Error('Vault not found.');
+    const data: LocalVaultStorage = JSON.parse(raw);
+    const oldKey = await this.deriveKey(currentPassword, this.base64ToBytes(data.salt), data.version === 1 ? LEGACY_ITERATIONS : CURRENT_ITERATIONS);
+    try {
+      const verifier = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: this.base64ToBytes(data.verifierIv) as BufferSource }, oldKey,
+        this.base64ToBytes(data.verifierCiphertext) as BufferSource);
+      if (new TextDecoder().decode(verifier) !== VERIFIER_PLAINTEXT) throw new VaultInvalidPasswordError();
+    } catch { throw new VaultInvalidPasswordError(); }
+    const nextKey = await this.reencryptVault(data, oldKey, newPassword, raw, epoch);
+    if (epoch !== this.operationEpoch) throw new VaultLockedError();
+    this.masterKey = nextKey;
+    this.resetActivityTimer();
+    this.notify();
+  }
+
+  private async reencryptVault(data: LocalVaultStorage, oldKey: CryptoKey, newPassword: string, original: string, epoch: number): Promise<CryptoKey> {
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const newKey = await this.deriveKey(newPassword, salt, CURRENT_ITERATIONS);
+    const verifierIv = crypto.getRandomValues(new Uint8Array(12));
+    const verifierCiphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: verifierIv }, newKey,
+      new TextEncoder().encode(VERIFIER_PLAINTEXT));
+    const profiles = [] as EncryptedProfileRecord[];
+    for (const record of data.profiles) {
+      const parts = record.encryptedData.split(':');
+      if (parts.length !== 2) throw new Error('Corrupt vault profile');
+      const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: this.base64ToBytes(parts[0]) as BufferSource },
+        oldKey, this.base64ToBytes(parts[1]) as BufferSource);
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, newKey, plain);
+      profiles.push({ ...record, encryptedData: `${this.bytesToBase64(iv)}:${this.bytesToBase64(new Uint8Array(encrypted))}` });
+    }
+    const next: LocalVaultStorage = { ...data, version: 2, salt: this.bytesToBase64(salt),
+      verifierIv: this.bytesToBase64(verifierIv), verifierCiphertext: this.bytesToBase64(new Uint8Array(verifierCiphertext)), profiles };
+    if (epoch !== this.operationEpoch || localStorage.getItem(STORAGE_KEY) !== original) {
+      throw new Error('Vault changed during migration. Retry after reopening.');
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    return newKey;
   }
 
   /**
@@ -189,7 +255,7 @@ class CryptoVaultManager {
    * 새로운 API 키를 암호화하여 로컬스토리지에 추가
    */
   public async addProfile(label: string, apiKey: string, keyHint?: string): Promise<string> {
-    if (!this.masterKey) {
+    if (!this.isUnlocked()) {
       throw new VaultLockedError();
     }
     const cleanKey = apiKey.trim();
@@ -205,11 +271,14 @@ class CryptoVaultManager {
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const plaintextBytes = new TextEncoder().encode(cleanKey);
 
+    const sessionKey = this.masterKey;
+    if (!sessionKey) throw new VaultLockedError();
     const encrypted = await crypto.subtle.encrypt(
       { name: 'AES-GCM', iv },
-      this.masterKey,
+      sessionKey,
       plaintextBytes
     );
+    if (this.masterKey !== sessionKey || localStorage.getItem(STORAGE_KEY) !== raw) throw new VaultLockedError();
 
     // iv:ciphertext 결합 포맷
     const payload = `${this.bytesToBase64(iv)}:${this.bytesToBase64(new Uint8Array(encrypted))}`;
@@ -225,7 +294,6 @@ class CryptoVaultManager {
 
     vaultData.profiles.push(newRecord);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(vaultData));
-    this.touch();
     this.notify();
     return id;
   }
@@ -234,13 +302,12 @@ class CryptoVaultManager {
    * 프로필 삭제
    */
   public removeProfile(id: string): void {
-    if (!this.masterKey) throw new VaultLockedError();
+    if (!this.isUnlocked()) throw new VaultLockedError();
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return;
     const vaultData: LocalVaultStorage = JSON.parse(raw);
     vaultData.profiles = vaultData.profiles.filter((p) => p.id !== id);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(vaultData));
-    this.touch();
     this.notify();
   }
 
@@ -252,18 +319,18 @@ class CryptoVaultManager {
     profileId: string,
     consumer: (apiKey: string) => Promise<T>
   ): Promise<T> {
-    this.touch();
-
     // 1. 데모 프로필인 경우 즉시 데모 키로 실행
     if (profileId.startsWith('demo-')) {
       return await consumer('ibk_demo_swiss_dev_0123456789abcdef');
     }
 
     // 2. 잠금 상태 확인
-    if (!this.masterKey) {
+    if (!this.isUnlocked()) {
       throw new VaultLockedError();
     }
 
+    const sessionKey = this.masterKey;
+    if (!sessionKey) throw new VaultLockedError();
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) throw new Error('Vault not found.');
     const vaultData: LocalVaultStorage = JSON.parse(raw);
@@ -282,7 +349,7 @@ class CryptoVaultManager {
     try {
       const decryptedBuffer = await crypto.subtle.decrypt(
         { name: 'AES-GCM', iv: iv as BufferSource },
-        this.masterKey,
+        sessionKey,
         ciphertext as BufferSource
       );
       decryptedKey = new TextDecoder().decode(decryptedBuffer);
@@ -290,9 +357,16 @@ class CryptoVaultManager {
       throw new Error('Decryption failed. Vault record may be corrupted.');
     }
 
-    // 4. 마지막 사용 일시 갱신
-    record.lastUsedAt = new Date().toISOString();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(vaultData));
+    if (this.masterKey !== sessionKey) throw new VaultLockedError();
+
+    // 자동 조회가 늦게 끝나도 새로 추가된 프로필을 과거 스냅샷으로 덮지 않는다.
+    const latestRaw = localStorage.getItem(STORAGE_KEY);
+    if (!latestRaw) throw new VaultLockedError();
+    const latest: LocalVaultStorage = JSON.parse(latestRaw);
+    const latestRecord = latest.profiles.find((profile) => profile.id === profileId);
+    if (!latestRecord || latestRecord.encryptedData !== record.encryptedData) throw new VaultLockedError();
+    latestRecord.lastUsedAt = new Date().toISOString();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(latest));
 
     // 5. 소비 콜백 실행 후 메모리 소멸
     try {
@@ -308,6 +382,7 @@ class CryptoVaultManager {
    * 전체 볼트 리셋 (모든 데이터 삭제)
    */
   public resetVault(): void {
+    this.operationEpoch += 1;
     localStorage.removeItem(STORAGE_KEY);
     this.masterKey = null;
     if (this.autoLockTimer) {
@@ -318,7 +393,7 @@ class CryptoVaultManager {
   }
 
   // --- 내부 헬퍼 함수 ---
-  private async deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey> {
+  private async deriveKey(password: string, salt: Uint8Array, iterations: number): Promise<CryptoKey> {
     const enc = new TextEncoder();
     const keyMaterial = await crypto.subtle.importKey(
       'raw',
@@ -332,7 +407,7 @@ class CryptoVaultManager {
       {
         name: 'PBKDF2',
         salt: salt as BufferSource,
-        iterations: PBKDF2_ITERATIONS,
+        iterations,
         hash: 'SHA-256',
       },
       keyMaterial,

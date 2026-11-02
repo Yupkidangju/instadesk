@@ -105,4 +105,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
-        run: gh release create "$GITHUB_REF_NAME" release-assets/* --verify-tag --title "InstaDesk 2.1.0" --notes-file docs/releases/v2.1.0.md
+        run: |
+          version=$(node -p "require('./package.json').version")
+          gh release create "$GITHUB_REF_NAME" release-assets/* --verify-tag --title "InstaDesk $version" --notes-file "docs/releases/v${version}.md"

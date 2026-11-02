@@ -1,8 +1,8 @@
 # InstaDesk 데스크톱 명세
 
-**Document Version:** 2.1.0
-**Status:** Windows x64·Linux x64·Linux arm64 네이티브 CI 패키지·로드 검증 및 `v2.1.0` 공개 릴리스 완료; 물리 ARM 기기·다른 배포판·실 서비스 변경 흐름은 미검증
-**Last Updated:** 2026-11-01  
+**Document Version:** 2.1.1 (감사 4 수정 계약)
+**Status:** `v2.1.0` 공개 릴리스 완료; 2.1.1 감사 4 수정 및 실 서비스 재검증 진행 중. 물리 ARM 기기·다른 배포판·실 서비스 변경 흐름은 별도 검증 대상
+**Last Updated:** 2026-11-02
 
 ---
 
@@ -17,7 +17,7 @@
 2. **소비 시점 복호화(On-demand Decryption) 보안 아키텍처**:
    - 전용 `app://instadesk` Origin의 `localStorage`에는 오직 암호화된 볼트 레코드(`ciphertext`, `salt`, `iv`)만 영구 저장.
    - 평문 키는 영구 상태로 메모리에 장기 보관되지 않고, 사용자가 입력한 마스터 비밀번호로 파생된 세션 키를 통해서만 API 호출 시점에 즉시 복호화되어 소비 후 가비지 컬렉션(GC).
-   - 세션 잠금(Lock) / 해제(Unlock), 비활성 타임아웃(기본 15분) 자동 잠금 지원. 잠금 시 앱이 소유한 PTY 소켓과 진행 중 요청을 종료하고 데스크톱 뷰 및 출력물을 화면에서 제거한다. 이미 외부 탭에 연 뷰어는 앱이 원격으로 취소할 수 없다.
+   - 세션 잠금(Lock) / 해제(Unlock), 사용자 입력 기준 비활성 타임아웃(기본 15분) 자동 잠금 지원. 자동 폴링·응답은 타이머를 연장하지 않는다. 잠금 시 앱이 소유한 PTY 소켓과 진행 중 요청을 종료하고 데스크톱 뷰 및 출력물을 화면에서 제거한다. 이미 외부 탭에 연 뷰어는 앱이 원격으로 취소할 수 없다.
 3. **네오스위스 디자인 시스템(Neo-Swiss Design System)**:
    - 엄격한 비대칭 모듈러 그리드, 1px 고대비 샤프 보더, 세리프가 없는 강렬한 인터내셔널 산세리프 타이포그래피(Inter), 모노스페이스 기술 폰트(JetBrains Mono).
    - 스위스 국기에서 유래한 정밀한 스위스 레드(`#E53935` / `#DC2626`) 및 인터내셔널 클라인 블루 액센트, 고대비 모노크롬(미드나잇 블랙, 쿨 그레이) 바탕.
@@ -47,7 +47,7 @@
 - **암호화 표준**: `AES-GCM` (Advanced Encryption Standard in Galois/Counter Mode), 키 길이 256-bit.
 - **키 파생 함수(KDF)**: `PBKDF2` (Password-Based Key Derivation Function 2)
   - 해시 함수: `SHA-256`
-  - 반복 횟수(Iterations): `100,000`회 이상
+  - 신규 v2 반복 횟수(Iterations): `600,000`회. 기존 v1은 `100,000`회로만 읽고 성공적으로 전체 재암호화한 뒤 v2로 이행한다. 신규 마스터 암호문구는 15자 이상이다.
   - 솔트(Salt): `crypto.getRandomValues(new Uint8Array(16))`로 생성된 암호학적으로 안전한 16바이트 무작위 바이트.
 - **초기화 벡터(IV)**: 암호화 1회당 무작위 12바이트(`crypto.getRandomValues(new Uint8Array(12))`).
 
@@ -63,7 +63,7 @@ export interface EncryptedProfileRecord {
 }
 
 export interface LocalVaultStorage {
-  version: 1;
+  version: 1 | 2;   // v1 읽기 호환, 신규 저장은 v2
   salt: string;        // 마스터 KDF salt (Base64)
   verifierCiphertext: string; // 암호화된 검증 토큰 (Base64)
   verifierIv: string;  // 검증 토큰 IV (Base64)
@@ -72,7 +72,11 @@ export interface LocalVaultStorage {
 }
 ```
 
+기존 v1은 현재 암호로 검증하고 모든 프로필의 복호화·재암호화가 끝난 뒤 원자적 저장소 쓰기로 v2가 된다. 실패하면 원본을 보존한다. 약한 기존 암호가 강화되는 것은 아니므로 잠금 해제 후 긴 암호문구로 변경할 수 있어야 한다. 입력 중 비밀번호·키는 모달 닫기·잠금·실패 후 UI 상태에서 지운다. 자세한 순서와 검증 기준은 `docs/electron/audit_4_remediation.md`를 따른다.
+
 볼트는 전용 `app://instadesk` Origin의 localStorage를 사용한다. 기존 GitHub Pages Origin의 저장소는 자동으로 이전하지 않으며, 사용자가 Electron 앱에 키를 다시 등록한다. 전용 Origin만으로 XSS 위험이 사라지는 것은 아니다.
+
+Electron의 `userData`와 `sessionData`는 버전이 들어가지 않는 OS 사용자별 `InstaDesk` 앱 데이터 경로로 고정한다. 2.1.1의 v2에서도 기존 localStorage 키 `instabox_deck_vault_v1`을 유지한다. 같은 OS 사용자와 앱 Origin이라면 패키지 버전·폴더를 바꿔도 암호화 프로필이 유지된다. 기존 저장소를 발견하면 신규 볼트 초기화로 덮어쓰지 않는다.
 
 ### 3.3 On-demand 소비 수명주기 (Decryption-on-Consumption)
 1. **평문 상시 보관 금지**: 스토어(State)에는 마스터 비밀번호나 평문 API 키 배열을 유지하지 않고, 파생된 `CryptoKey` 객체(또는 세션 런타임 언락 메모리 캐시)만 일시 보관.
@@ -142,8 +146,8 @@ export interface LocalVaultStorage {
 - `GET /v1/machines/{id}/logs`: 시리얼 콘솔 로그 및 최근 작업 조회
 
 ### 5.2 동시 세션 쿼터 제어
-- `instabox.sh` 정책상 계정당 최대 8개의 동시 터미널/데스크톱 WebSocket 세션 허용 (`429 quota_exceeded`).
-- 클라이언트는 앱이 소유한 실제 PTY WebSocket의 연결 시도 및 열린 연결을 프로필별로 예약/계수한다. 타일, 비연결 탭, 숨겨진 타일은 세션이 아니다. 한 프로필에서 8개 예약/연결 중에는 새 PTY 연결을 차단한다. 헤더는 전체 연결 수와 프로필별 최대치를 표시한다. 데스크톱 뷰와 외부 탭의 서버측 세션 수는 신뢰성 있게 알 수 없으므로 이 게이지에 포함하지 않으며 서버 429 응답도 처리한다.
+- 현행 InstaBox OpenAPI는 **user당 열린 PTY 최대 8개**를 명시한다 (`429 quota_exceeded`). Desktop과 SSE `exec`를 이 PTY 한도에 합산한다는 근거는 없다.
+- 앱은 자신이 시도하거나 연 PTY 수만 표시한다. 여러 프로필이 같은 user 소속인지 및 외부 클라이언트의 PTY 수는 알 수 없으므로 로컬 카운트로 서버 한도를 강제하지 않는다. 최종 거절은 서버 응답을 진단 가능하게 표시한다.
 
 ### 5.3 여러 프로필의 머신 동기화
 - 프로필별 조회 성공과 실패를 분리한다. 정상 응답한 프로필과 활성 데모의 최신 머신만 합쳐 표시하고, 실패한 프로필의 오래된 머신은 남기지 않는다. 실패는 프로필 이름과 함께 표시한다.

@@ -7,6 +7,12 @@ import { proxyApiRequest } from './apiGateway';
 import { TerminalGateway, type TerminalOpenRequest } from './terminalGateway';
 import { DesktopViewGateway } from './desktopViewGateway';
 import type { DesktopViewBounds, DesktopViewRequest } from './desktopViewPolicy';
+import { resolveUserDataPath } from './userDataPath';
+
+const userDataPath = resolveUserDataPath(app.getPath('appData'));
+fs.mkdirSync(userDataPath, { recursive: true });
+app.setPath('userData', userDataPath);
+app.setPath('sessionData', userDataPath);
 
 protocol.registerSchemesAsPrivileged([{
   scheme: 'app',

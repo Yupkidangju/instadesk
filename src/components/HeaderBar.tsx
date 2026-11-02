@@ -26,7 +26,6 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({ sidebarOpen, onToggleSideb
     isVaultInitialized,
     isVaultUnlocked,
     sessionStates,
-    maxSessionsQuota,
     gridMode,
     setGridMode,
     refreshMachines,
@@ -43,13 +42,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({ sidebarOpen, onToggleSideb
   } = useAppStore();
 
   const activeCount = Object.keys(sessionStates).length;
-  const profileCounts = Object.values(sessionStates).reduce<Record<string, number>>((counts, entry) => {
-    counts[entry.profileId] = (counts[entry.profileId] ?? 0) + 1;
-    return counts;
-  }, {});
-  const highestProfileCount = Math.max(0, ...Object.values(profileCounts));
-  const isNearQuota = highestProfileCount >= 6;
-  const isAtQuota = highestProfileCount >= maxSessionsQuota;
+  const isNearQuota = activeCount >= 6;
 
   const gridModes: GridMode[] = ['1x1', '2x1', '2x2', 'auto'];
 
@@ -85,10 +78,10 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({ sidebarOpen, onToggleSideb
       <div className="flex flex-wrap items-center gap-2 min-w-0">
         {/* 세션 쿼터 게이지 */}
         <div className="hidden lg:flex items-center space-x-2 font-mono text-xs px-2.5 py-1 border border-zinc-800 bg-zinc-900/80">
-          <Radio className={`w-3.5 h-3.5 ${isAtQuota ? 'text-red-500 animate-pulse' : isNearQuota ? 'text-amber-400' : 'text-emerald-400'}`} />
+          <Radio className={`w-3.5 h-3.5 ${isNearQuota ? 'text-amber-400' : 'text-emerald-400'}`} />
           <span className="text-zinc-400">PTY:</span>
-          <span className={`font-bold ${isAtQuota ? 'text-red-400' : isNearQuota ? 'text-amber-300' : 'text-zinc-200'}`}>
-            {activeCount} TOTAL · MAX {highestProfileCount} / {maxSessionsQuota} PER KEY
+          <span title="Only connections opened in this app are counted. The server enforces 8 PTYs per user, including other clients." className={`font-bold ${isNearQuota ? 'text-amber-300' : 'text-zinc-200'}`}>
+            {activeCount} LOCAL · 8 / USER SERVER LIMIT
           </span>
         </div>
 
