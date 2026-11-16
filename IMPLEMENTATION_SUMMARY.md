@@ -1,4 +1,4 @@
-# InstaDesk 2.1.2 구현 요약
+# InstaDesk 2.1.3 구현 요약
 
 2026-11-01 · Windows x64·Linux x64·Linux arm64 Electron 포터블 앱. 기존 웹 구현 요약은 [보존본](docs/legacy/IMPLEMENTATION_SUMMARY.web-2026-11-01.md)에 있다.
 
@@ -32,3 +32,7 @@ InstaDesk.exe (Windows) / InstaDesk (Linux)
 자동 조회의 `lastUsedAt` 쓰기는 최신 볼트 레코드에 병합해 새 프로필을 잃는 경합을 막는다. v1→v2 및 v2의 키 프로필 5개 보존을 회귀 테스트로 확인한다.
 
 2.1.2 스크롤 수정은 `WorkspaceGrid.tsx`의 작업 영역 식별, `DesktopScreenView.tsx`의 자리·가시성 계산, `electron/desktopViewGateway.ts`의 네이티브 가시성·휠 전달을 연결한다. 목표와 검증 순서는 `docs/electron/desktop_scroll_2_1_2.md`에 있다.
+
+감사 5 수정은 xterm 휠 경계와 타일/세션별 제한 메모리 기록 복원, 동봉 Linux 안내의 패키지명 생성 및 플랫폼별 SHA-256 설치 절차다. `docs/electron/audit_5_remediation.md`의 계약·검증 순서를 따른다.
+
+`terminalWheelPolicy.ts`·`TerminalView.tsx`·`src/index.css`는 일반 휠의 xterm 소유와 Shift+휠의 작업 영역 이동을 담당한다. `terminalHistoryCache.ts`와 xterm SerializeAddon은 포커스·탭 왕복 시 출력/위치를 복원하고 `useAppStore.ts`는 잠금·삭제 때 정리한다. `render-linux-setup.mjs`와 `package-linux.mjs`는 현재 패키지 이름을 동봉 안내에 넣으며 CI는 안내/해시와 Linux 파일 권한을 검사한다. [finding별 자체 검증](docs/audit/audit_report_5_remediation.md)에 실행 결과와 남은 범위를 기록한다.

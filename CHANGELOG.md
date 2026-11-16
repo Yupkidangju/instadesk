@@ -5,6 +5,13 @@ All notable changes to the InstaBox Deck project will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.3] - 2026-11-17
+
+### Fixed
+- 터미널 기록 끝에서 같은 휠 입력이 작업 영역까지 이동하던 문제를 막고 `Shift+휠`로 타일 스크롤을 선택하게 합니다.
+- 1×1 포커스·탭 왕복에서 최근 터미널 기록과 읽던 위치를 제한된 메모리 안에서 복원합니다. 숨긴 PTY 연결은 종료합니다.
+- Linux 패키지에 동봉된 설치 안내가 실제 버전·아키텍처를 가리키고, Windows/Linux 설치 전에 SHA-256을 확인할 수 있게 합니다.
+
 ## [2.1.2] - 2026-11-02
 
 ### Fixed

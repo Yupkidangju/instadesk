@@ -234,7 +234,7 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
           <span className="hidden sm:inline text-zinc-500 text-[10px]">
             {frameWidth}x{frameHeight}
           </span>
-          {tileCount > 2 && <span className="hidden xl:inline text-zinc-500 text-[10px]" title="Wheel scrolls VM tiles; Alt+wheel scrolls the remote desktop">
+          {tileCount > 2 && <span className="text-zinc-500 text-[10px]" title="Wheel scrolls VM tiles; Alt+wheel scrolls the remote desktop">
             WHEEL: TILES · ALT+WHEEL: VM
           </span>}
         </div>

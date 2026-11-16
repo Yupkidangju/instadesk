@@ -57,13 +57,18 @@ jobs:
           set -euo pipefail
           version=$(node -p "require('./package.json').version")
           name="InstaDesk-${version}-${{ matrix.target }}"
+          (cd release && sha256sum "${name}.tar.gz" > SHA256SUMS.txt && grep -F "  ${name}.tar.gz" SHA256SUMS.txt | sha256sum -c -)
           sudo install -d -m 0755 /opt/instadesk
           sudo tar -xzf "release/${name}.tar.gz" -C /opt/instadesk
           sudo chown -R root:root "/opt/instadesk/${name}"
           sudo chmod 4755 "/opt/instadesk/${name}/chrome-sandbox"
           test -x "/opt/instadesk/${name}/InstaDesk"
           test -f "/opt/instadesk/${name}/LINUX_SETUP.md"
+          grep -Fq "name=\"${name}\"" "/opt/instadesk/${name}/LINUX_SETUP.md"
+          ! grep -Fq '{{PACKAGE_NAME}}' "/opt/instadesk/${name}/LINUX_SETUP.md"
           test "$(stat -c '%u:%a' "/opt/instadesk/${name}/chrome-sandbox")" = '0:4755'
+          main_mode=$(stat -c '%a' "/opt/instadesk/${name}/InstaDesk")
+          test "$((8#$main_mode & 04000))" -eq 0
           binary_type=$(file -b "/opt/instadesk/${name}/InstaDesk")
           echo "$binary_type"
           if [ "${{ matrix.target }}" = 'linux-arm64' ]; then

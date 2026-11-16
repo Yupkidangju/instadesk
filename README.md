@@ -6,16 +6,30 @@
 
 **InstaDesk** is a desktop app for managing [InstaBox](https://instabox.sh) virtual machines with your own API key. Add a key, see the VMs available to its workspace, and work with terminals, desktops, and commands from one window.
 
-**Download:** [InstaDesk v2.1.2](https://github.com/Yupkidangju/instadesk/releases/tag/v2.1.2) · Windows x64 · Linux x64 · Linux arm64
+**Download:** [InstaDesk v2.1.3](https://github.com/Yupkidangju/instadesk/releases/tag/v2.1.3) · Windows x64 · Linux x64 · Linux arm64
 
 ### Install
 
-**Windows:** Download `InstaDesk-2.1.2-win-x64.zip`, extract the whole archive, and run `InstaDesk.exe` inside the extracted folder.
+**Windows:** Download `InstaDesk-2.1.3-win-x64.zip` and `SHA256SUMS.txt` from the same release. In the download folder, verify the ZIP in PowerShell before extracting it:
 
-**Linux:** Download the `linux-x64` or `linux-arm64` archive for your machine. In the download directory, run the following commands, replacing `x64` with `arm64` when needed:
+```powershell
+$archive = 'InstaDesk-2.1.3-win-x64.zip'
+$entry = @(Get-Content -LiteralPath 'SHA256SUMS.txt' | Where-Object { ($_ -split '\s+', 2)[1] -eq $archive })
+if ($entry.Count -ne 1) { throw 'Checksum entry missing or duplicated' }
+$expected = ($entry[0] -split '\s+', 2)[0].ToLowerInvariant()
+$actual = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($actual -ne $expected) { throw 'Checksum mismatch' }
+'Checksum OK'
+```
+
+Extract the whole archive and run `InstaDesk.exe` inside the extracted folder.
+
+**Linux:** Download the `linux-x64` or `linux-arm64` archive and `SHA256SUMS.txt` from the same release. In the download directory, run the following commands, replacing `x64` with `arm64` when needed. The checksum step runs before installation:
 
 ```bash
-name=InstaDesk-2.1.2-linux-x64
+set -euo pipefail
+name=InstaDesk-2.1.3-linux-x64
+grep -F "  ${name}.tar.gz" SHA256SUMS.txt | sha256sum -c -
 sudo install -d -m 0755 /opt/instadesk
 sudo tar -xzf "${name}.tar.gz" -C /opt/instadesk
 sudo chown -R root:root "/opt/instadesk/${name}"
@@ -23,7 +37,7 @@ sudo chmod 4755 "/opt/instadesk/${name}/chrome-sandbox"
 "/opt/instadesk/${name}/InstaDesk"
 ```
 
-Run the app as your normal user. Linux needs the sandbox helper permissions shown above; do not launch it with `--no-sandbox`. The downloads are currently unsigned and do not auto-update. `SHA256SUMS.txt` is available on the release page.
+Run the app as your normal user. Linux needs the sandbox helper permissions shown above; do not launch it with `--no-sandbox`. The downloads are currently unsigned and do not auto-update. A checksum from the same release detects download changes; it does not prove who published the release.
 
 ### Connect your InstaBox account
 
@@ -47,6 +61,7 @@ The profile name labels the saved key; it does not create or rename a VM. One ke
 | Local key vault and demo | Keys are encrypted on this computer and the vault locks after 15 minutes without user input. Try the offline demo without a key. |
 
 When the VM grid has more rows than the window, the wheel over a Desktop view scrolls the VM tiles. Use **Alt+wheel** to scroll inside the remote Desktop.
+Over a terminal, the wheel scrolls only its output, even at the top or bottom. Use **Shift+wheel** to scroll VM tiles. Recent terminal output and your reading position are kept in bounded memory when you change tile focus or tabs; the hidden PTY reconnects when you return. Closing a tile or locking the vault clears that local history. Switching away from EXEC stops its output stream and clears its local output; an already submitted remote command may continue.
 
 InstaDesk connects directly to InstaBox; it does not require a shared proxy or GitHub Pages. The encrypted vault is stored in your operating-system account, outside the extracted app folder. For source builds and detailed Linux setup, see [BUILD_GUIDE.md](BUILD_GUIDE.md).
 
@@ -56,16 +71,30 @@ Apache License 2.0. Copyright 2026 Yupkidangju <yupkidangju@gmail.com>. [License
 
 **InstaDesk**는 본인의 API 키로 [InstaBox](https://instabox.sh) 가상 머신을 관리하는 데스크톱 앱입니다. 키를 등록하면 해당 워크스페이스의 VM을 한 창에서 확인하고 터미널, 데스크톱, 명령 실행을 사용할 수 있습니다.
 
-**다운로드:** [InstaDesk v2.1.2](https://github.com/Yupkidangju/instadesk/releases/tag/v2.1.2) · Windows x64 · Linux x64 · Linux arm64
+**다운로드:** [InstaDesk v2.1.3](https://github.com/Yupkidangju/instadesk/releases/tag/v2.1.3) · Windows x64 · Linux x64 · Linux arm64
 
 ### 설치
 
-**Windows:** `InstaDesk-2.1.2-win-x64.zip`을 내려받아 전체 압축을 푼 다음, 폴더 안의 `InstaDesk.exe`를 실행합니다.
+**Windows:** 같은 릴리스의 `InstaDesk-2.1.3-win-x64.zip`과 `SHA256SUMS.txt`를 내려받습니다. 내려받은 폴더에서 압축을 풀기 전에 PowerShell로 확인하세요.
 
-**Linux:** 기기에 맞는 `linux-x64` 또는 `linux-arm64` 압축 파일을 내려받습니다. 내려받은 파일이 있는 디렉터리에서 다음 명령을 실행하세요. ARM64 기기라면 첫 줄의 `x64`를 `arm64`로 바꿉니다.
+```powershell
+$archive = 'InstaDesk-2.1.3-win-x64.zip'
+$entry = @(Get-Content -LiteralPath 'SHA256SUMS.txt' | Where-Object { ($_ -split '\s+', 2)[1] -eq $archive })
+if ($entry.Count -ne 1) { throw 'Checksum entry missing or duplicated' }
+$expected = ($entry[0] -split '\s+', 2)[0].ToLowerInvariant()
+$actual = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($actual -ne $expected) { throw 'Checksum mismatch' }
+'Checksum OK'
+```
+
+전체 압축을 푼 다음 폴더 안의 `InstaDesk.exe`를 실행합니다.
+
+**Linux:** 같은 릴리스의 `linux-x64` 또는 `linux-arm64` 압축 파일과 `SHA256SUMS.txt`를 내려받습니다. 내려받은 디렉터리에서 다음 명령을 실행하세요. ARM64 기기라면 `name`의 `x64`를 `arm64`로 바꿉니다. 설치 전에 체크섬을 확인합니다.
 
 ```bash
-name=InstaDesk-2.1.2-linux-x64
+set -euo pipefail
+name=InstaDesk-2.1.3-linux-x64
+grep -F "  ${name}.tar.gz" SHA256SUMS.txt | sha256sum -c -
 sudo install -d -m 0755 /opt/instadesk
 sudo tar -xzf "${name}.tar.gz" -C /opt/instadesk
 sudo chown -R root:root "/opt/instadesk/${name}"
@@ -73,7 +102,7 @@ sudo chmod 4755 "/opt/instadesk/${name}/chrome-sandbox"
 "/opt/instadesk/${name}/InstaDesk"
 ```
 
-앱은 일반 사용자 계정으로 실행합니다. Linux에서는 위와 같이 sandbox helper 권한을 설정해야 하며 `--no-sandbox`로 실행하지 마세요. 현재 배포 파일에는 코드 서명과 자동 업데이트가 없습니다. 릴리스 페이지에서 `SHA256SUMS.txt`도 받을 수 있습니다.
+앱은 일반 사용자 계정으로 실행합니다. Linux에서는 위와 같이 sandbox helper 권한을 설정해야 하며 `--no-sandbox`로 실행하지 마세요. 현재 배포 파일에는 코드 서명과 자동 업데이트가 없습니다. 같은 릴리스의 체크섬은 다운로드 변조·손상 탐지에 도움을 주지만 게시자 신원을 증명하지는 않습니다.
 
 ### InstaBox 연결
 
@@ -97,6 +126,7 @@ sudo chmod 4755 "/opt/instadesk/${name}/chrome-sandbox"
 | 로컬 키 볼트·데모 | 키를 이 컴퓨터에 암호화해 저장하고 15분간 사용자 입력이 없으면 잠급니다. 키 없이 오프라인 데모를 체험할 수도 있습니다. |
 
 VM 타일이 여러 행으로 이어져 작업 영역을 스크롤할 때는 Desktop 위의 일반 휠이 타일을 움직입니다. 원격 Desktop 안을 스크롤하려면 **Alt+휠**을 사용하세요.
+터미널 위의 일반 휠은 기록 끝에서도 터미널 출력만 스크롤합니다. VM 타일을 움직이려면 **Shift+휠**을 사용하세요. 타일 포커스나 탭을 바꿨다 돌아오면 최근 터미널 기록과 읽던 위치를 제한된 메모리에서 복원하고, 숨긴 PTY는 재연결합니다. 타일을 닫거나 볼트를 잠그면 로컬 기록을 지웁니다. EXEC에서 다른 탭으로 이동하면 출력 스트림과 로컬 출력이 종료되지만 이미 서버에 제출된 명령은 계속될 수 있습니다.
 
 InstaDesk는 InstaBox에 직접 연결하므로 공용 프록시나 GitHub Pages가 필요하지 않습니다. 암호화된 볼트는 압축을 푼 앱 폴더 밖의 OS 사용자 데이터에 저장됩니다. 소스에서 빌드하거나 Linux 설치를 자세히 보려면 [BUILD_GUIDE.md](BUILD_GUIDE.md)를 참고하세요.
 

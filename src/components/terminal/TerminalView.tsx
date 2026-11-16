@@ -3,10 +3,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
+import { SerializeAddon } from '@xterm/addon-serialize';
 import { instaboxClient } from '../../services/instaboxClient';
 import { RefreshCw, Trash2, Wifi, WifiOff } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { describeTerminalFailure, retryDelayMs, type TerminalFailure } from './terminalRetry';
+import { workspaceWheelDelta } from './terminalWheelPolicy';
+import { terminalHistoryCache } from './terminalHistoryCache';
 
 interface TerminalViewProps {
   tileId: string;
@@ -33,12 +36,34 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
   const [retryInfo, setRetryInfo] = useState<string | null>(null);
   const retryAttemptRef = useRef(0);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tileCount = useAppStore((state) => state.tiles.length);
+
+  useEffect(() => {
+    const element = containerRef.current;
+    if (!element) return;
+    const onWheel = (event: WheelEvent) => {
+      const workspace = element.closest<HTMLElement>('[data-workspace-scroll]');
+      if (!workspace) return;
+      const delta = workspaceWheelDelta(event, workspace.clientHeight);
+      event.preventDefault();
+      if (delta === null) return;
+      event.stopPropagation();
+      workspace.scrollTop += delta;
+    };
+    element.addEventListener('wheel', onWheel, { capture: true, passive: false });
+    return () => element.removeEventListener('wheel', onWheel, true);
+  }, []);
 
   useEffect(() => {
     if (!containerRef.current) return;
+    const restored = terminalHistoryCache.get(tileId, sessionName);
+    let restoreComplete = !restored;
 
     // 1. xterm 인스턴스 초기화 (네오스위스 다크 팔레트)
     const term = new Terminal({
+      cols: restored?.cols ?? 80,
+      rows: restored?.rows ?? 24,
+      scrollback: 1000,
       cursorBlink: true,
       cursorStyle: 'block',
       fontFamily: '"JetBrains Mono", ui-monospace, Menlo, Monaco, monospace',
@@ -70,8 +95,10 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
     });
 
     const fitAddon = new FitAddon();
+    const serializeAddon = new SerializeAddon();
     term.loadAddon(fitAddon);
     term.loadAddon(new WebLinksAddon());
+    term.loadAddon(serializeAddon);
 
     term.open(containerRef.current);
     fitAddon.fit();
@@ -213,7 +240,14 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
       }
     };
 
-    connectTerminal();
+    if (restored) {
+      term.write(restored.data, () => {
+        if (isDisposed) return;
+        restoreComplete = true;
+        term.scrollLines(-restored.scrollOffset);
+        void connectTerminal();
+      });
+    } else void connectTerminal();
 
     // 윈도우/컨테이너 리사이즈 감지
     const resizeObserver = new ResizeObserver(() => {
@@ -223,6 +257,17 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
 
     return () => {
       isDisposed = true;
+      const state = useAppStore.getState();
+      const keepHistory = state.tiles.some((tile) => tile.tileId === tileId) &&
+        (profileId.startsWith('demo-') || state.isVaultUnlocked);
+      if (keepHistory && restoreComplete) {
+        try {
+          const buffer = term.buffer.active;
+          terminalHistoryCache.save(tileId, profileId, sessionName,
+            serializeAddon.serialize({ scrollback: 1000, excludeAltBuffer: true }),
+            buffer.baseY - buffer.viewportY, term.cols, term.rows);
+        } catch { terminalHistoryCache.clearSession(tileId, sessionName); }
+      } else if (!keepHistory) terminalHistoryCache.clearTile(tileId);
       if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
       retryTimerRef.current = null;
       resizeObserver.disconnect();
@@ -230,6 +275,8 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
       if (bridge) void bridge.closeTerminal(tileId);
       useAppStore.getState().releaseSession(tileId);
       term.dispose();
+      if (termRef.current === term) termRef.current = null;
+      if (fitAddonRef.current === fitAddon) fitAddonRef.current = null;
     };
   }, [tileId, machineId, profileId, sessionName, retryGeneration]);
 
@@ -245,11 +292,12 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
   };
 
   const handleClear = () => {
+    terminalHistoryCache.clearSession(tileId, sessionName);
     termRef.current?.clear();
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#09090b] overflow-hidden select-text">
+    <div data-terminal-panel className="flex flex-col h-full bg-[#09090b] overflow-hidden select-text">
       {/* 서브 툴바 */}
       <div className="min-h-8 bg-zinc-950 border-b border-zinc-800 px-2 py-1 flex flex-wrap items-center justify-between gap-1 text-xs font-mono select-none flex-shrink-0">
         <div className="flex flex-wrap items-center gap-1 min-w-0">
@@ -266,6 +314,10 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
           )}
 
           <span className="text-zinc-600">|</span>
+
+          {tileCount > 1 && <span className="text-zinc-500 text-[10px]" title="Wheel scrolls terminal history; Shift+wheel scrolls VM tiles">
+            WHEEL: TERM · SHIFT+WHEEL: TILES
+          </span>}
 
           {/* 세션 선택 */}
           <div className="flex items-center space-x-1">

@@ -152,6 +152,7 @@ export const ExecRunnerView: React.FC<ExecRunnerViewProps> = ({ machineId, profi
             </div>
           )}
         </div>
+        <p className="text-[10px] text-zinc-500">Switching tabs stops this stream and clears its local output.</p>
       </div>
 
       {/* 출력 콘솔 영역 */}

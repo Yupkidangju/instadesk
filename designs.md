@@ -106,6 +106,7 @@
   - 우측 액션: `[CLOSE (x)]`. 재연결·새로고침은 터미널/데스크톱 패널 안에 있다.
 - **터미널 패널 (Terminal Pane)**:
   - `@xterm/xterm` 기반 캔버스/DOM 렌더러.
+  - 일반 휠은 터미널 기록 전용이며 위·아래 끝에서 바깥 타일로 같은 델타를 넘기지 않는다. `Shift+휠`은 작업 영역을 스크롤한다. 타일 포커스/탭 왕복 시 최근 기록과 읽던 위치를 복원하지만 숨긴 PTY는 닫는다. 상한/정리 경계는 `docs/electron/audit_5_remediation.md`를 따른다.
   - 다크 테마: 배경 `#09090B`, 텍스트 `#E4E4E7`, 커서 스위스 레드 `#E53935`.
   - 제한된 Electron IPC를 통한 WebSocket PTY 또는 SSE 인터랙티브 실행기 연동.
 - **데스크톱 화면 패널 (Desktop Screen Pane)**:

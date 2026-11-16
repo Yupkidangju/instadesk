@@ -55,4 +55,5 @@
 }
 .xterm-viewport {
   background-color: #09090b !important;
+  overscroll-behavior-y: contain;
 }

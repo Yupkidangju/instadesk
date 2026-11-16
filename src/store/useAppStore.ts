@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { InstaboxMachine, WorkspaceTile, GridMode, WorkspacePanelType } from '../types/instabox';
 import { cryptoVault } from '../services/cryptoVault';
 import { instaboxClient } from '../services/instaboxClient';
+import { terminalHistoryCache } from '../components/terminal/terminalHistoryCache';
 
 interface AppStoreState {
   // --- 볼트 상태 ---
@@ -90,6 +91,7 @@ export const useAppStore = create<AppStoreState>((set, get) => {
   cryptoVault.subscribe(() => {
     const unlocked = cryptoVault.isUnlocked();
     if (!unlocked) {
+      terminalHistoryCache.clear();
       refreshGeneration += 1;
       instaboxClient.cancelActiveRequests();
       void window.instadeskDesktop?.closeAll();
@@ -196,6 +198,7 @@ export const useAppStore = create<AppStoreState>((set, get) => {
       if (!get().profiles.some((profile) => profile.id === id)) return;
       refreshGeneration += 1;
       instaboxClient.cancelProfile(id);
+      terminalHistoryCache.clearProfile(id);
       void window.instadeskDesktop?.closeProfile(id);
       const sessionStates = Object.fromEntries(
         Object.entries(get().sessionStates).filter(([, entry]) => entry.profileId !== id)
@@ -218,6 +221,7 @@ export const useAppStore = create<AppStoreState>((set, get) => {
     },
 
     disableDemoMode: () => {
+      for (const tile of get().tiles) if (tile.profileId.startsWith('demo-')) terminalHistoryCache.clearTile(tile.tileId);
       set({
         isDemoMode: false,
         tiles: get().tiles.filter((t) => !t.profileId.startsWith('demo-')),
@@ -300,6 +304,7 @@ export const useAppStore = create<AppStoreState>((set, get) => {
     removeTile: (tileId: string) => {
       get().releaseSession(tileId);
       set({ tiles: get().tiles.filter((t) => t.tileId !== tileId) });
+      terminalHistoryCache.clearTile(tileId);
     },
 
     setTileTab: (tileId: string, tab: WorkspacePanelType) => {
@@ -330,6 +335,7 @@ export const useAppStore = create<AppStoreState>((set, get) => {
 
     clearAllTiles: () => {
       set({ tiles: [], sessionStates: {} });
+      terminalHistoryCache.clear();
     },
 
     setSearchQuery: (query: string) => {
@@ -360,9 +366,11 @@ export const useAppStore = create<AppStoreState>((set, get) => {
 
     deleteMachine: async (machineId: string, profileId: string, machineName: string) => {
       await instaboxClient.deleteMachine(profileId, machineId, machineName);
+      const removedTiles = get().tiles.filter((t) => t.machineId === machineId && t.profileId === profileId);
       set({
         tiles: get().tiles.filter((t) => !(t.machineId === machineId && t.profileId === profileId)),
       });
+      for (const tile of removedTiles) terminalHistoryCache.clearTile(tile.tileId);
       await get().refreshMachines();
     },
   };

@@ -1,7 +1,7 @@
 # InstaDesk 데스크톱 명세
 
-**Document Version:** 2.1.2 (Desktop 스크롤 수정 계약)
-**Status:** `v2.1.2` Windows x64·Linux x64·Linux arm64 네이티브 CI·공개 릴리스 완료. Desktop 네이티브 스크롤 수정은 로컬 회귀와 5대/2열 사용자 수용 통과. 오류 폴백·기존 사용자 키 5개 보존/복원·물리 ARM 기기·다른 배포판·실 서비스 변경 흐름은 별도 검증 대상
+**Document Version:** 2.1.3 (감사 5 수정 계약 초안)
+**Status:** `v2.1.2` Windows x64·Linux x64·Linux arm64 공개 릴리스 완료. 감사 5의 휠 경계·터미널 기록·Linux 설치 안내 수정 진행 중. 오류 폴백·기존 사용자 키 5개 보존/복원·물리 ARM 기기·다른 배포판·실 서비스 변경 흐름은 별도 검증 대상
 **Last Updated:** 2026-11-02
 
 ---
@@ -121,6 +121,7 @@ Electron의 `userData`와 `sessionData`는 버전이 들어가지 않는 OS 사�
 - 한 VM의 `SPLIT` 탭은 PTY 터미널과 Desktop 뷰어를 동시에 마운트한다. 타일의 가용 폭이 700px 이상이면 구분선을 좌우로 25~75% 범위에서 드래그·키보드 조절한다. 더 좁은 타일은 상하 배치한다.
 - 실제 Desktop 뷰는 가용 패널 전체를 차지하고 대시보드가 실제 framebuffer의 화면비를 유지하며 영상을 맞춘다. 서버 상태가 보고한 해상도와 실제 framebuffer가 다를 수 있으므로 앱은 보고 해상도로 네이티브 뷰 높이를 제한하지 않는다. 데모 미리보기는 논리 크기를 `fitDesktop`으로 맞춘다.
 - 여러 타일로 작업 영역이 스크롤되면 실제 Desktop 네이티브 뷰는 해당 타일을 따라 이동한다. 타일의 Desktop 자리가 스크롤 영역 밖 또는 일부만 보일 때는 네이티브 뷰를 숨겨 다른 타일·헤더를 덮지 않고, 다시 완전히 보이면 같은 스트림을 표시한다. 이때 Desktop 위 일반 휠은 작업 영역, `Alt+휠`은 원격 Desktop을 스크롤한다. 작업 영역에 스크롤이 없으면 일반 휠은 원격 Desktop으로 전달한다. 상세 계약은 `docs/electron/desktop_scroll_2_1_2.md`를 따른다.
+- 터미널 위 일반 휠/트랙패드는 xterm 기록만 스크롤하고 끝 경계에서 작업 영역으로 연쇄 전달하지 않는다. `Shift+휠`은 작업 영역을 움직인다. 1×1 포커스나 TERM↔다른 탭/SPLIT 왕복에서는 같은 타일·세션의 최근 기록과 읽던 위치를 제한된 메모리 안에서 복원하고 PTY는 숨김 때 닫는다. 타일 닫기·프로필 삭제·볼트 잠금에서는 기록을 지운다. 구체적 상한·비목표는 `docs/electron/audit_5_remediation.md`를 따른다.
 
 ### 4.3 Electron 보안·통신 경계
 - 렌더러는 `nodeIntegration: false`, `contextIsolation: true`, `sandbox: true`, `webSecurity: true`로 로컬 번들만 로드한다. 메인 프로세스는 고정 `https://api.instabox.sh` REST/SSE와 허용된 `wss://api.instabox.sh` 또는 `wss://connect.instabox.sh` PTY만 연결한다.

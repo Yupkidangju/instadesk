@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
+import { renderLinuxSetup } from './render-linux-setup.mjs';
 
 if (process.platform !== 'linux' || !['x64', 'arm64'].includes(process.arch)) {
   throw new Error('Linux packaging must run on native x64 or arm64 Linux');
@@ -49,7 +50,8 @@ fs.cpSync(path.join(root, 'node_modules', 'ws'), path.join(appDir, 'node_modules
   recursive: true, errorOnExist: true,
 });
 fs.copyFileSync(path.join(root, 'LICENSE'), path.join(appDir, 'LICENSE'));
-fs.copyFileSync(path.join(root, 'LINUX_SETUP.md'), path.join(packageDir, 'LINUX_SETUP.md'));
+fs.writeFileSync(path.join(packageDir, 'LINUX_SETUP.md'),
+  renderLinuxSetup(fs.readFileSync(path.join(root, 'LINUX_SETUP.md'), 'utf8'), name));
 fs.writeFileSync(path.join(appDir, 'package.json'), JSON.stringify({
   name: manifest.name,
   productName: manifest.productName,
