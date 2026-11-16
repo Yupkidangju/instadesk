@@ -8,13 +8,13 @@
 
 | 원본 finding | 수정 상태·증거 | 남은 확인 |
 | --- | --- | --- |
-| IMP-F010 | `LINUX_SETUP.md`의 2.1.0 고정 이름을 패키저의 `{{PACKAGE_NAME}}` 치환으로 변경. `linuxSetupGuide.test.ts`가 2.1.3 x64·arm64 이름을 검사하고 CI는 추출한 안내의 정확한 이름을 검사한다. | 실제 Linux 아카이브·CI 결과 대기 |
+| IMP-F010 | `LINUX_SETUP.md`의 2.1.0 고정 이름을 패키저의 `{{PACKAGE_NAME}}` 치환으로 변경. `linuxSetupGuide.test.ts`가 2.1.3 x64·arm64 이름을 검사하고 태그 CI가 두 아카이브에서 추출한 안내의 정확한 이름·체크섬 명령을 확인했다. | Linux 물리 기기에서 설치 명령 수동 실행은 미검증 |
 | IMP-F011 | `spec.md`/`designs.md`/결정 12에 휠·기록 수명을 고정. TERM 최근 1000줄, 항목 256KiB·전체 2MiB/16항목 LRU, 세션별 위치 복원, 잠금/삭제 정리. `terminalHistoryCache.test.ts`, `terminalHistoryLifecycle.test.tsx`. | 한도 축출·서버 최근 출력 재전송은 문서상 제한 |
 | DBG-F014 | xterm 위 일반 휠의 바깥 기본 스크롤을 취소하고 xterm 내부 입력은 유지. `Shift+휠`만 작업 영역으로 전달. `terminalWheelPolicy.test.ts`와 생산 빌드 Chromium 실측(아래). | 물리 트랙패드 기기 별도 수용 |
 | DBG-F015 | xterm SerializeAddon 0.13.0으로 출력과 읽던 줄 오프셋을 메모리 보관. 1×1/TERM↔EXEC 왕복, 타일 닫기·잠금·프로필 삭제 경계 테스트. 생산 빌드 Chromium 왕복 실측(아래). | 실제 PTY 재접속 시 서버 최근 출력이 중복될 수 있음 |
 | DBG-F016 | `DesktopScreenView.tsx`의 휠 안내를 좁은 폭에서도 표시. 2.1.2의 뷰 위치·가시성 계약과 테스트 유지. | 복수 실제 네이티브 Desktop·Alt+휠 독립 실측은 여전히 필요 |
 | SEC-F008 | README/BUILD_GUIDE에 Windows `Get-FileHash`·Linux `sha256sum -c` 설치 전 절차 추가. Windows 정상/오류 해시 변이 검사 수행. Linux CI는 메인 바이너리 비-SUID, sandbox helper 4755를 검사한다. 서명/ASAR/Fuses/safeStorage는 Decision 13의 별도 배포 보안 검토로 기록. | 체크섬은 게시자 서명 아님. 서명/ASAR/Fuses는 구현·위험 수용되지 않음 |
-| XPF-F004/F005/F006 | F004는 휠·기록 계약, F005는 동봉 안내 생성·CI 검사로 연결. F006의 메인 바이너리 4755와 구 볼트 파라미터 주장은 원본 감사의 소스 대조대로 채택하지 않으며 Linux CI 모드 검사로 강화. | 실제 아카이브 결과 대기 |
+| XPF-F004/F005/F006 | F004는 휠·기록 계약, F005는 동봉 안내 생성·CI 검사로 연결. F006의 메인 바이너리 4755와 구 볼트 파라미터 주장은 원본 감사의 소스 대조대로 채택하지 않으며 Linux 태그 CI에서 메인 비-SUID·helper 4755를 검사했다. | 실제 악성 변조/게시자 서명 수단은 별도 검토 |
 
 ## 실제 브라우저 재현과 수정 후 실측
 
@@ -42,7 +42,20 @@
 | `npm run package:win` | 로컬 2.1.3 ZIP 158,405,449 bytes, SHA-256 `1ed63b213f6b7b6c5639181b8d3eae011ab330cb8d135281ec139273562bd013` |
 | Windows 패키지 `--smoke-test` | exit 0 |
 | Windows 해시 절차 | 로컬 ZIP의 일치 해시 수락, 의도적으로 다른 해시 거부 |
-| Linux x64·arm64 동봉 안내 | 이름 렌더 테스트 성공, 실제 패키지 검사는 CI 대기 |
-| 네이티브 CI/공개 자산 | 대기 |
+| Linux x64·arm64 동봉 안내 | 이름 렌더 테스트와 두 네이티브 태그 CI의 추출 안내·체크섬·main 비-SUID/helper 4755 검사 성공 |
+| `main` CI | [43905109418](https://github.com/Yupkidangju/instadesk/actions/runs/43905109418): Windows x64·Linux x64·Linux arm64 패키지/로드 3/3 성공 |
+| 태그 CI | [43905585612](https://github.com/Yupkidangju/instadesk/actions/runs/43905585612): 세 패키지와 release 작업 4/4 성공 |
+| 공개 자산 | [v2.1.3 릴리스](https://github.com/Yupkidangju/instadesk/releases/tag/v2.1.3): draft/prerelease 아님, 세 아카이브 HEAD 200, `SHA256SUMS.txt` 세 값이 GitHub 자산 digest와 일치 |
 
-**판정:** 코드·계약·모의/브라우저 수정 범위는 자체 검증 통과. Linux 네이티브 패키지/동봉 안내와 새 릴리스 검증은 아직 대기다. 독립 감사 PASS, 물리 트랙패드, 실제 복수 Desktop, 게시자 서명/무결성 보호는 주장하지 않는다.
+공개 자산 (2026-11-17):
+
+| 이름 | 크기(bytes) | SHA-256 |
+| --- | ---: | --- |
+| `InstaDesk-2.1.3-linux-arm64.tar.gz` | 125,130,939 | `7f93a62edbe657c9d66201f4e53d69f1d520049b131403cfbdc7fa2d8e60cc6b` |
+| `InstaDesk-2.1.3-linux-x64.tar.gz` | 124,058,652 | `cccc8a2008147ec71453dfeb1ca847aaaeb986406f2fcd61727c79d14e21c0c0` |
+| `InstaDesk-2.1.3-win-x64.zip` | 158,405,465 | `f797d012920bf394b267ec9c3a76dcb9331cde9410efec863ffec23a7b2f78bf` |
+| `SHA256SUMS.txt` | 294 | `ee9334410265dd14780755e070028c04c117aef9ed41da6d2804ed0da6bb2c68` |
+
+로컬 Windows ZIP과 공개 CI ZIP은 바이트 재현성을 보장하지 않으므로 공개 다운로드 확인에는 위 공개 해시를 사용한다. `v2.1.3` 태그는 `2000880fd67b1ab70c54bfd8c39baa23d0636a09`를 가리킨다.
+
+**판정:** 코드·계약·브라우저/네이티브 CI·공개 자산 수정 범위는 자체 검증 통과. 독립 감사 PASS, 물리 트랙패드, 실제 복수 Desktop, Linux 물리 기기 설치, 게시자 서명/무결성 보호는 주장하지 않는다.

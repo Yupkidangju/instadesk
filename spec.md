@@ -1,7 +1,7 @@
 # InstaDesk 데스크톱 명세
 
-**Document Version:** 2.1.3 (감사 5 수정 계약 초안)
-**Status:** `v2.1.2` Windows x64·Linux x64·Linux arm64 공개 릴리스 완료. 감사 5의 휠 경계·터미널 기록·Linux 설치 안내 수정 진행 중. 오류 폴백·기존 사용자 키 5개 보존/복원·물리 ARM 기기·다른 배포판·실 서비스 변경 흐름은 별도 검증 대상
+**Document Version:** 2.1.3 (감사 5 수정 계약)
+**Status:** `v2.1.3` Windows x64·Linux x64·Linux arm64 네이티브 CI·공개 릴리스 완료. 터미널 휠 경계·기록 왕복은 생산 빌드 브라우저에서 검증했다. 물리 트랙패드·복수 실제 Desktop·Linux 물리 기기 설치·서명/무결성, 기존 사용자 키 5개 복원은 별도 검증 대상
 **Last Updated:** 2026-11-02
 
 ---
