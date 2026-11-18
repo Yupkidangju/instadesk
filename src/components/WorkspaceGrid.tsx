@@ -1,12 +1,24 @@
 // src/components/WorkspaceGrid.tsx
-import React, { useState } from 'react';
+import React from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { VmTilePane } from './VmTilePane';
+import { SessionCommandBar } from './SessionCommandBar';
 import { LayoutGrid, Terminal } from 'lucide-react';
 
 export const WorkspaceGrid: React.FC = () => {
-  const { tiles, gridMode, machines, addTile, openApiKeyModal, enableDemoMode, isDemoMode } = useAppStore();
-  const [focusedTileId, setFocusedTileId] = useState<string | null>(null);
+  const {
+    tiles,
+    gridMode,
+    machines,
+    presets,
+    applyPreset,
+    focusedTileId,
+    setFocusedTileId,
+    addTile,
+    openApiKeyModal,
+    enableDemoMode,
+    isDemoMode,
+  } = useAppStore();
 
   const getGridClasses = () => {
     if (tiles.length === 1) return 'grid-cols-1';
@@ -86,6 +98,26 @@ export const WorkspaceGrid: React.FC = () => {
               </div>
             </div>
           )}
+
+          {presets.length > 0 && (
+            <div className="pt-3 border-t border-zinc-800 flex flex-col space-y-2">
+              <span className="text-[11px] text-zinc-500 font-bold tracking-wider uppercase">
+                SAVED WORKSPACE PRESETS ({presets.length}):
+              </span>
+              <div className="flex flex-wrap justify-center gap-1.5">
+                {presets.slice(0, 6).map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => applyPreset(preset.id)}
+                    className="neo-btn px-2.5 py-1 text-[10px] text-zinc-200 hover:border-swiss-red"
+                  >
+                    {preset.name} ({preset.tiles.length})
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -94,23 +126,44 @@ export const WorkspaceGrid: React.FC = () => {
   const focusedTile = tiles.find((tile) => tile.tileId === focusedTileId) ?? tiles[0];
   const displayTiles = gridMode === '1x1' ? [focusedTile] : tiles;
 
+  const machineTileCounts = tiles.reduce<Record<string, number>>((acc, tile) => {
+    const key = `${tile.profileId}:${tile.machineId}`;
+    acc[key] = (acc[key] ?? 0) + 1;
+    return acc;
+  }, {});
+
   return (
-    <main data-workspace-scroll className="flex-1 min-w-0 min-h-0 w-full bg-[#09090b] p-2 overflow-y-auto flex flex-col">
-      {gridMode === '1x1' && tiles.length > 1 && (
-        <nav aria-label="Focused workspace" className="flex gap-1 mb-2 overflow-x-auto">
-          {tiles.map((tile) => (
-            <button key={tile.tileId} type="button" onClick={() => setFocusedTileId(tile.tileId)}
-              className={`neo-btn px-2 py-1 text-xs whitespace-nowrap ${focusedTile.tileId === tile.tileId ? 'text-white border-swiss-red' : 'text-zinc-400'}`}>
-              {machines.find((machine) => machine.id === tile.machineId && machine.profileId === tile.profileId)?.name ?? tile.machineId}
-            </button>
+    <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden bg-[#09090b]">
+      <SessionCommandBar />
+      <main data-workspace-scroll className="flex-1 min-w-0 min-h-0 w-full bg-[#09090b] p-2 overflow-y-auto flex flex-col">
+        {gridMode === '1x1' && tiles.length > 1 && (
+          <nav aria-label="Focused workspace" className="flex gap-1 mb-2 overflow-x-auto">
+            {tiles.map((tile) => {
+              const machineName =
+                machines.find((machine) => machine.id === tile.machineId && machine.profileId === tile.profileId)?.name ??
+                tile.machineId;
+              const hasMultiple = (machineTileCounts[`${tile.profileId}:${tile.machineId}`] ?? 0) > 1;
+              return (
+                <button
+                  key={tile.tileId}
+                  type="button"
+                  onClick={() => setFocusedTileId(tile.tileId)}
+                  className={`neo-btn px-2 py-1 text-xs whitespace-nowrap ${
+                    focusedTile.tileId === tile.tileId ? 'text-white border-swiss-red' : 'text-zinc-400'
+                  }`}
+                >
+                  {hasMultiple ? `${machineName}:${tile.terminalSessionName}` : machineName}
+                </button>
+              );
+            })}
+          </nav>
+        )}
+        <div className={`grid ${getGridClasses()} gap-2 flex-1 w-full ${displayTiles.length === 1 ? 'min-h-0 grid-rows-1' : 'auto-rows-[minmax(320px,1fr)]'}`}>
+          {displayTiles.map((tile) => (
+            <VmTilePane key={tile.tileId} tile={tile} index={tiles.indexOf(tile)} />
           ))}
-        </nav>
-      )}
-      <div className={`grid ${getGridClasses()} gap-2 flex-1 w-full ${displayTiles.length === 1 ? 'min-h-0 grid-rows-1' : 'auto-rows-[minmax(320px,1fr)]'}`}>
-        {displayTiles.map((tile) => (
-          <VmTilePane key={tile.tileId} tile={tile} index={tiles.indexOf(tile)} />
-        ))}
-      </div>
-    </main>
+        </div>
+      </main>
+    </div>
   );
 };

@@ -132,6 +132,17 @@ export interface ProcessListResponse {
 
 export type WorkspacePanelType = 'terminal' | 'desktop' | 'split' | 'exec' | 'logs' | 'processes';
 
+export type TerminalSessionName = 'main' | 'agent' | 'aux';
+
+export type SessionActivityStatus = 'idle' | 'running' | 'prompt' | 'disconnected';
+
+export interface SessionActivityInfo {
+  status: SessionActivityStatus;
+  summary?: string;
+  isSensitive?: boolean;
+  updatedAt: number;
+}
+
 export interface WorkspaceTile {
   tileId: string;
   machineId: string;
@@ -139,6 +150,22 @@ export interface WorkspaceTile {
   activeTab: WorkspacePanelType;
   terminalSessionName: string; // 기본값 "main"
   desktopViewOnly: boolean;
+}
+
+export interface WorkspaceTilePresetItem {
+  machineId: string;
+  profileId: string;
+  activeTab: WorkspacePanelType;
+  terminalSessionName: string;
+  desktopViewOnly: boolean;
+}
+
+export interface WorkspacePreset {
+  id: string;
+  name: string;
+  gridMode: GridMode;
+  tiles: WorkspaceTilePresetItem[];
+  createdAt: string;
 }
 
 export type GridMode = '1x1' | '2x1' | '2x2' | 'auto';

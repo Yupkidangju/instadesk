@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { instaboxClient } from '../../services/instaboxClient';
+import { cryptoVault, MAX_FAILED_UNLOCK_ATTEMPTS } from '../../services/cryptoVault';
 import {
   Key,
   Shield,
@@ -247,8 +248,13 @@ export const ApiKeyModal: React.FC = () => {
             ) : !isVaultUnlocked ? (
               <form onSubmit={handleUnlock} className="space-y-2">
                 <p className="text-amber-400 text-[11px]">
-                  Vault is currently locked. Enter your master password to unlock and consume API keys.
+                  Vault is currently locked. Enter your master password to unlock and consume API keys. Stored vault data is erased after {MAX_FAILED_UNLOCK_ATTEMPTS} failed attempts.
                 </p>
+                {cryptoVault.getFailedUnlockAttempts() > 0 && (
+                  <p className="text-red-300 text-[11px] font-bold">
+                    Failed attempts: {cryptoVault.getFailedUnlockAttempts()} / {MAX_FAILED_UNLOCK_ATTEMPTS}
+                  </p>
+                )}
                 <div className="flex space-x-2">
                   <input
                     type="password"

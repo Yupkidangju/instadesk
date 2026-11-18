@@ -1,7 +1,7 @@
 # InstaBox Deck Technical Design Decisions
 
-**Document Version:** 1.0.0  
-**Last Updated:** 2026-10-31  
+**Document Version:** 1.1.0  
+**Last Updated:** 2026-11-18  
 
 ---
 
@@ -122,3 +122,24 @@ Ubuntu 24.04 네이티브 CI에서 일반 사용자 소유의 `chrome-sandbox`�
 ## 13. Decision 13: 배포 체크섬과 후속 무결성 검토
 
 현재 Windows ZIP·Linux tar.gz는 미서명 포터블 아카이브다. 이번 수정은 설치 전 같은 릴리스의 SHA-256 비교를 실행 가능한 절차로 제공하고 동봉 Linux 안내가 실제 패키지명을 가리키게 한다. 체크섬은 게시자 신원 인증을 대신하지 않으며, 이 위험을 새로 수용한다는 뜻도 아니다. 제품 유지관리자는 다음 서명/배포 보안 마일스톤 전에 Windows 코드 서명과 ASAR 무결성/Fuses의 패키징·디버깅 호환성을 검토한다. Linux에서는 Windows용 ASAR 무결성 기능을 같은 보호로 주장하지 않고, Linux 서명/배포 수단을 별도로 결정한다. `safeStorage` 도입은 기존 마스터 암호·버전 이행 및 Linux 비밀 저장소 부재 폴백을 평가하는 별도 설계 과제다.
+
+## 14. Decision 14: 멀티세션 타일 분리·신호등 상태 추적·라이브 PTY 미러링
+
+### 14.1 채택된 결정
+- **동일 VM 다중 세션 타일과 네이티브 Desktop 뷰 분리**: 동일 VM의 `main`/`agent`/`aux` 세션을 별도 타일로 열되 동일 `(profileId, machineId, terminalSessionName)` 중복은 `addTile`·`setTileSessionName`·`applyPreset`에서 모두 기존 타일 포커스로 수렴시켜 WebSocket `taken` 충돌을 막는다. 네이티브 `WebContentsView`는 `desktop_${tileId}`를 ID로 사용해 동일 VM 다중 타일이 동시에 `SPLIT`/`DESKTOP`을 열어도 생명주기와 좌표가 충돌하지 않게 한다.
+- **휴리스틱 기반 신호등 상태 추적(`SessionActivityTracker`)**: 서버 측 셸 상태 API가 없으므로 터미널 입출력과 ANSI 정리된 꼬리 텍스트를 기반으로 `running`(🔴)/`prompt`(🟡)/`idle`(🟢)/`disconnected`(⚪)를 보수적으로 판정한다. 셸 프롬프트 복귀를 최우선으로 판별하고, `Enter` 제출 시 직전 프롬프트 꼬리를 비워 완료 후에도 노란색이 고착되지 않게 한다.
+- **라이브 PTY 제어(`terminalRegistry`)와 SSE Broadcast(`BroadcastExecModal`)의 역할 분리**: 단발성 비대화형 일괄 실행은 기존 SSE `POST /exec` 기반 `BroadcastExecModal`을 유지하고, 열려 있는 대화형 셸·AI 에이전트 제어(`Y`/`N`/`1`/`2`/`Esc`/`Ctrl+C` 및 키스트로크 미러링)는 `terminalRegistry`를 통해 활성 PTY로 직접 전달한다. 암호/패스프레이즈 프롬프트(`isSensitive`)가 감지된 경우 미러링을 차단하고 볼트 잠금 시 미러링을 해제해 평문 비밀 확산을 방지한다.
+- **워크스페이스 프리셋 분리 저장**: `instabox_deck_presets_v1`에 타일 배치 구조와 `gridMode`만 JSON 저장하고 비밀·명령·출력은 제외한다. 로드·적용 시 스키마와 열거값을 엄격히 검증하며 잠긴 상태에서 실 프로필 프리셋을 누르면 잠금 해제 모달을 연다.
+
+### 14.2 기각된 대안
+- **단순 비활성 타이머 기반 `idle` 전환**: 조용한 빌드(`cargo build`, `sleep`)가 수 초간 무출력일 때 완료(`idle`)로 오판하므로 채택하지 않았다.
+- **프리셋을 볼트 암호화 파일 안에만 묶어 두는 방식**: 데모 모드·잠금 전 빠른 레이아웃 확인과 독립시키기 위해 비밀이 없는 배치 메타데이터만 분리 저장하되 실 프로필 복원은 볼트 잠금 해제로 게이트한다.
+
+## 15. Decision 15: 볼트 미초기화 시 Create 전환 및 10회 실패 자동 파기
+
+### 15.1 채택된 결정
+- **초기 상태 Create / 설정 후 Unlock 분기**: `MasterUnlockModal`이 `isVaultInitialized` 상태를 기준으로 마스터 암호가 없는 초기 상태에서는 `CREATE VAULT`(15자 이상 암호문구 생성 및 확인) 흐름을, 이미 볼트가 설정된 상태에서는 `UNLOCK VAULT` 흐름을 제공한다.
+- **10회 이상 잠금 해제 실패 시 볼트 데이터 영구 삭제**: `LocalVaultStorage.failedUnlockAttempts`를 `localStorage`에 영구 카운트해 앱 재시작 후에도 횟수가 초기화되지 않도록 한다. 연속 실패 횟수가 `10`회에 도달하면 `cryptoVault.resetVault()`로 `instabox_deck_vault_v1`과 메모리의 모든 실 프로필 상태를 즉시 삭제해 오프라인 무차별 대입을 차단한다. 해제 성공 시 카운터는 `0`으로 초기화된다.
+
+### 15.2 기각된 대안
+- **메모리 카운터만 유지하는 방식**: 앱을 재실행하면 실패 횟수가 초기화되어 10회 제한을 우회할 수 있으므로 기각했다.

@@ -5,6 +5,24 @@ All notable changes to the InstaBox Deck project will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-11-18
+
+### Added
+- 동일 VM 내 `main`/`agent`/`aux` 세션을 별도 타일로 동시 오픈하는 멀티세션 지원과 사이드바/타일 헤더 `+ SESS` 액션.
+- 쉘·AI 에이전트 프롬프트를 감지하는 실시간 세션 신호등 인디케이터(`RUN` 🔴 / `PROMPT` 🟡 / `IDLE` 🟢 / `OFF` ⚪)와 상단 통합 상태 스트립(`SessionCommandBar`), 타일별 인라인 질문 알림 및 빠른 응답 배너.
+- 라이브 PTY 동시 명령 전송(`ALL` / `SYNCED` / `PROMPTS`), 동기화 그룹 키스트로크 미러링(`MIRROR`), 원클릭 빠른 응답(`Y`, `N`, `Enter`, `1`, `2`, `Esc`, `Ctrl+C`), 일괄 탭 전환·재연결·클리어, 로컬 워크스페이스 프리셋 저장/복원.
+
+### Fixed
+- 데모 모드 터미널에서 개행이 포함된 다중 문자 명령/빠른 응답을 문자 단위로 순차 실행하고 확인 프롬프트 응답 및 `Esc`/`Ctrl+C` 시 상태 추적기(`SessionActivityTracker`)를 동기화합니다.
+- 타일 내부 세션 전환(`setTileSessionName`)과 프리셋 적용 시 동일 VM의 중복 세션 연결을 방지하고 기존 타일로 포커스를 이동합니다.
+- `DesktopScreenView`에 타일별 `viewId`(`desktop_${tileId}`)를 사용해 동일 VM 다중 타일 `SPLIT`/`DESKTOP` 전환 및 닫기 시 네이티브 `WebContentsView` 충돌을 해결합니다.
+- 수동/일괄 `RECONNECT` 시 `terminalHistoryCache` 재저장을 건너뛰어 이전 출력 중복 복원을 방지합니다.
+- `1x1` 모드 세션 칩 점프 시 마운트 후 터미널 포커스를 보장하고, 전송 대상이 0건일 때 입력값을 유지하며, `SYNCED` 카운트·스코프 전환 기준을 일관되게 보정합니다.
+- 프리셋 저장소(`instabox_deck_presets_v1`)의 하위 타일 스키마·열거값·중복 세션을 검증하고, 잠금 상태에서 실 프로필 프리셋 선택 시 잠금 해제 모달을 띄웁니다.
+- 볼트 잠금 및 전체 타일 초기화 시 키스트로크 미러링을 해제하고, 암호/패스프레이즈 입력 프롬프트 감지 시 미러링을 일시 차단합니다.
+- 초기 암호 볼트 해제 시 마스터 암호가 없는 미초기화 상태에서는 볼트 생성(`create`) UI를, 이미 설정된 상태에서는 잠금 해제(`unlock`) UI를 표시합니다.
+- 마스터 암호 잠금 해제를 10회 이상 틀리면 `localStorage`에 저장된 암호화 볼트 데이터를 영구 삭제하고 초기화 상태로 되돌립니다.
+
 ## [2.1.3] - 2026-11-17
 
 ### Fixed

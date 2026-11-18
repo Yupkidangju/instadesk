@@ -10,6 +10,8 @@ import { useAppStore } from '../../store/useAppStore';
 import { describeTerminalFailure, retryDelayMs, type TerminalFailure } from './terminalRetry';
 import { workspaceWheelDelta } from './terminalWheelPolicy';
 import { terminalHistoryCache } from './terminalHistoryCache';
+import { SessionActivityTracker } from './sessionActivity';
+import { terminalRegistry } from './terminalRegistry';
 
 interface TerminalViewProps {
   tileId: string;
@@ -36,7 +38,17 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
   const [retryInfo, setRetryInfo] = useState<string | null>(null);
   const retryAttemptRef = useRef(0);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectRef = useRef<() => void>(() => {});
+  const clearRef = useRef<() => void>(() => {});
+  const skipNextHistorySaveRef = useRef(false);
   const tileCount = useAppStore((state) => state.tiles.length);
+  const isMirrored = useAppStore((state) => state.isKeystrokeMirroring && state.syncedTileIds.includes(tileId));
+  const isSensitiveMirrorPaused = useAppStore((state) =>
+    Boolean(
+      state.sessionActivities[tileId]?.isSensitive ||
+        state.syncedTileIds.some((id) => state.sessionActivities[id]?.isSensitive)
+    )
+  );
 
   useEffect(() => {
     const element = containerRef.current;
@@ -56,6 +68,7 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
 
   useEffect(() => {
     if (!containerRef.current) return;
+    skipNextHistorySaveRef.current = false;
     const restored = terminalHistoryCache.get(tileId, sessionName);
     let restoreComplete = !restored;
 
@@ -111,12 +124,31 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
     let ready = false;
     let unregisterDesktop: (() => void) | null = null;
     const bridge = window.instadeskDesktop;
+    const tracker = new SessionActivityTracker();
+    const demoTimers = new Set<ReturnType<typeof setTimeout>>();
+    let sendLocalInput: (data: string) => boolean = () => false;
+
+    const publishActivity = (info: ReturnType<SessionActivityTracker['getState']>) => {
+      if (!isDisposed) useAppStore.getState().setSessionActivity(tileId, info);
+    };
+
+    const unregisterRegistry = terminalRegistry.register({
+      tileId,
+      sendInput: (data) => sendLocalInput(data),
+      focus: () => {
+        (term as unknown as { focus?: () => void }).focus?.();
+        containerRef.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
+      },
+      clear: () => clearRef.current(),
+      reconnect: () => reconnectRef.current(),
+    });
 
     const fail = (failure: TerminalFailure) => {
       if (isDisposed || failed) return;
       failed = true;
       ready = false;
       useAppStore.getState().releaseSession(tileId);
+      publishActivity(tracker.markDisconnected());
       setStatus('disconnected');
       setErrorMessage(describeTerminalFailure(failure));
       const nextAttempt = retryAttemptRef.current + 1;
@@ -133,51 +165,188 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
       } else setRetryInfo(null);
     };
 
+    const shouldMirrorInput = () => {
+      const { isKeystrokeMirroring, syncedTileIds, sessionActivities } = useAppStore.getState();
+      if (!isKeystrokeMirroring || !syncedTileIds.includes(tileId)) return false;
+      const sensitiveActive =
+        tracker.getState().isSensitive ||
+        syncedTileIds.some((id) => sessionActivities[id]?.isSensitive);
+      return !sensitiveActive;
+    };
+
+    const mirrorIfAllowed = (data: string, allowed: boolean) => {
+      if (!allowed) return;
+      const { isKeystrokeMirroring, syncedTileIds } = useAppStore.getState();
+      if (isKeystrokeMirroring && syncedTileIds.includes(tileId)) {
+        terminalRegistry.mirrorInput(tileId, data, syncedTileIds);
+      }
+    };
+
     // 2. 터미널 연결 시작
     const connectTerminal = async () => {
       setStatus('connecting');
       setErrorMessage(null);
       setRetryInfo(null);
+      publishActivity({ status: 'disconnected', updatedAt: Date.now() });
 
       term.writeln('\x1b[38;5;244m[INSTABOX DECK] Initializing terminal PTY session...\x1b[0m');
 
       // 데모 모드 가상 PTY 시뮬레이터
       if (profileId.startsWith('demo-')) {
-        setTimeout(() => {
+        const promptLine = '\x1b[1;31muser@instabox-node\x1b[0m:\x1b[1;34m/data/home\x1b[0m$ ';
+        const writeDemoOutput = (text: string) => {
           if (isDisposed) return;
+          term.write(text);
+          publishActivity(tracker.recordOutput(text));
+        };
+        const scheduleDemo = (fn: () => void, ms: number) => {
+          const timer = setTimeout(() => {
+            demoTimers.delete(timer);
+            if (!isDisposed) fn();
+          }, ms);
+          demoTimers.add(timer);
+        };
+
+        let demoReady = false;
+        let currentInput = '';
+        let awaitingConfirm: 'shell' | 'agent' | 'password' | null = null;
+
+        const clearDemoTimers = () => {
+          for (const timer of demoTimers) clearTimeout(timer);
+          demoTimers.clear();
+        };
+
+        const submitDemoCommand = (cmd: string) => {
+          if (cmd === 'clear') {
+            term.clear();
+            publishActivity(tracker.reset());
+            writeDemoOutput(promptLine);
+          } else if (cmd === 'uname -a') {
+            writeDemoOutput('Linux instabox-demo-node 6.6.0 #1 SMP PREEMPT x86_64 GNU/Linux\r\n' + promptLine);
+          } else if (cmd === 'htop' || cmd === 'top') {
+            writeDemoOutput(
+              '\x1b[7m  PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND \x1b[0m\r\n' +
+              '  812 user      20   0  342.1M  84.2M  32.1M S   2.4   1.0   0:14.23 xfce4-session\r\n' +
+              '  920 user      20   0  1240.2M 240.1M  64.2M S   4.8   2.9   0:32.10 chromium\r\n' +
+              ' 1204 user      20   0   14.2M   4.1M   2.8M R   0.0   0.1   0:00.08 htop\r\n' +
+              promptLine
+            );
+          } else if (cmd === 'build' || cmd === 'sleep' || cmd === 'deploy') {
+            writeDemoOutput(`[${sessionName}] Running ${cmd} pipeline...\r\n`);
+            scheduleDemo(() => writeDemoOutput('[1/2] Compiling artifacts...\r\n'), 500);
+            scheduleDemo(() => writeDemoOutput('[2/2] Done.\r\n' + promptLine), 1200);
+          } else if (cmd === 'apt' || cmd === 'confirm') {
+            awaitingConfirm = 'shell';
+            writeDemoOutput('After this operation, 42.1 MB of additional disk space will be used.\r\nDo you want to continue? [Y/n] ');
+          } else if (cmd === 'agent' || cmd === 'ask') {
+            awaitingConfirm = 'agent';
+            writeDemoOutput('Agent wants to run: npm test\r\nAllow this command execution? (1. Yes / 2. Always / 3. No) [1-3]: ');
+          } else if (cmd === 'sudo' || cmd.startsWith('sudo ')) {
+            awaitingConfirm = 'password';
+            writeDemoOutput('[sudo] password for user: ');
+          } else if (cmd) {
+            writeDemoOutput(`instabox: ${cmd}: command executed in demo microVM\r\n` + promptLine);
+          } else {
+            writeDemoOutput(promptLine);
+          }
+        };
+
+        const handleDemoChar = (ch: string) => {
+          if (ch === '\u0003') {
+            clearDemoTimers();
+            currentInput = '';
+            awaitingConfirm = null;
+            const act = tracker.recordInput('\u0003');
+            if (act) publishActivity(act);
+            writeDemoOutput('^C\r\n' + promptLine);
+            return;
+          }
+
+          if (ch === '\u001b') {
+            if (awaitingConfirm) {
+              clearDemoTimers();
+              currentInput = '';
+              awaitingConfirm = null;
+              const act = tracker.recordInput('\r');
+              if (act) publishActivity(act);
+              writeDemoOutput('^[\r\nCancelled.\r\n' + promptLine);
+            }
+            return;
+          }
+
+          if (ch === '\r' || ch === '\n') {
+            if (awaitingConfirm) {
+              const mode = awaitingConfirm;
+              const answer = mode === 'password' ? '***' : (currentInput.trim().toLowerCase() || 'y');
+              currentInput = '';
+              awaitingConfirm = null;
+              const act = tracker.recordInput('\r');
+              if (act) publishActivity(act);
+              writeDemoOutput('\r\n');
+              if (mode === 'agent') {
+                writeDemoOutput(answer === 'n' || answer === '3' ? 'Action cancelled by user.\r\n' : 'Tool approved. Applying changes...\r\n');
+              } else if (mode === 'password') {
+                writeDemoOutput('Authentication succeeded.\r\n');
+              } else {
+                writeDemoOutput(answer === 'n' ? 'Aborted.\r\n' : 'Continuing operation...\r\n');
+              }
+              scheduleDemo(() => {
+                writeDemoOutput(`Completed (${answer}).\r\n` + promptLine);
+              }, 350);
+              return;
+            }
+
+            writeDemoOutput('\r\n');
+            const cmd = currentInput.trim();
+            currentInput = '';
+            const act = tracker.recordInput('\r');
+            if (act) publishActivity(act);
+            submitDemoCommand(cmd);
+            return;
+          }
+
+          if (ch === '\u007F' || ch === '\b') {
+            if (currentInput.length > 0) {
+              currentInput = currentInput.slice(0, -1);
+              if (awaitingConfirm !== 'password') term.write('\b \b');
+            }
+            return;
+          }
+
+          currentInput += ch;
+          if (awaitingConfirm !== 'password') term.write(ch);
+        };
+
+        const handleDemoData = (data: string): boolean => {
+          if (!demoReady || isDisposed) return false;
+          // 방향키 등 ANSI 이스케이프 시퀀스는 데모 줄 버퍼를 오염시키지 않도록 무시한다.
+          if (data.length > 1 && data.startsWith('\u001b[')) return true;
+
+          for (let i = 0; i < data.length; i += 1) {
+            const ch = data[i];
+            if (ch === '\r' && data[i + 1] === '\n') {
+              handleDemoChar('\r');
+              i += 1;
+              continue;
+            }
+            handleDemoChar(ch);
+          }
+          return true;
+        };
+
+        sendLocalInput = handleDemoData;
+
+        scheduleDemo(() => {
+          if (isDisposed) return;
+          demoReady = true;
           setStatus('connected');
           term.writeln('\x1b[1;32m● CONNECTED TO DEMO MICROVM GATEWAY (xterm-256color)\x1b[0m');
           term.writeln('\x1b[90mSession: ' + sessionName + ' | Host: instabox-' + machineId + '\x1b[0m\n');
-          term.write('\x1b[1;31muser@instabox-node\x1b[0m:\x1b[1;34m/data/home\x1b[0m$ ');
-
-          let currentInput = '';
+          writeDemoOutput(promptLine);
           term.onData((data) => {
-            if (data === '\r') {
-              term.write('\r\n');
-              const cmd = currentInput.trim();
-              if (cmd === 'clear') {
-                term.clear();
-              } else if (cmd === 'uname -a') {
-                term.writeln('Linux instabox-demo-node 6.6.0 #1 SMP PREEMPT x86_64 GNU/Linux');
-              } else if (cmd === 'htop' || cmd === 'top') {
-                term.writeln('\x1b[7m  PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND \x1b[0m');
-                term.writeln('  812 user      20   0  342.1M  84.2M  32.1M S   2.4   1.0   0:14.23 xfce4-session');
-                term.writeln('  920 user      20   0  1240.2M 240.1M  64.2M S   4.8   2.9   0:32.10 chromium');
-                term.writeln(' 1204 user      20   0   14.2M   4.1M   2.8M R   0.0   0.1   0:00.08 htop');
-              } else if (cmd) {
-                term.writeln(`instabox: ${cmd}: command executed in demo microVM`);
-              }
-              currentInput = '';
-              term.write('\x1b[1;31muser@instabox-node\x1b[0m:\x1b[1;34m/data/home\x1b[0m$ ');
-            } else if (data === '\u007F') { // Backspace
-              if (currentInput.length > 0) {
-                currentInput = currentInput.slice(0, -1);
-                term.write('\b \b');
-              }
-            } else {
-              currentInput += data;
-              term.write(data);
-            }
+            const allowMirror = shouldMirrorInput();
+            handleDemoData(data);
+            mirrorIfAllowed(data, allowMirror);
           });
         }, 300);
         return;
@@ -197,6 +366,13 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
         }
 
         if (bridge) {
+          sendLocalInput = (data: string) => {
+            if (!ready || failed || isDisposed) return false;
+            const act = tracker.recordInput(data);
+            if (act) publishActivity(act);
+            void bridge.sendTerminal(tileId, data).catch(() => {});
+            return true;
+          };
           unregisterDesktop = bridge.onTerminalEvent((event) => {
             if (isDisposed || event.id !== tileId) return;
             if (event.type === 'open') {
@@ -207,13 +383,18 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
               setStatus('connected');
               retryAttemptRef.current = 0;
               useAppStore.getState().activateSession(tileId);
+              publishActivity(tracker.markConnected());
               term.writeln('\x1b[1;32m● CONNECTED TO INSTABOX PTY GATEWAY\x1b[0m\r\n');
               void bridge.resizeTerminal(tileId, term.cols, term.rows).catch(() => {});
             } else if (event.type === 'data') {
-              if (!failed && event.data) term.write(event.data);
+              if (!failed && event.data) {
+                term.write(event.data);
+                publishActivity(tracker.recordOutput(event.data));
+              }
             } else if (event.type === 'exit') {
               failed = true;
               useAppStore.getState().releaseSession(tileId);
+              publishActivity(tracker.markDisconnected());
               setStatus('disconnected');
               term.writeln(`\r\n\x1b[33m[Session exited with code ${event.exitCode ?? 'unknown'}]\x1b[0m`);
               void bridge.closeTerminal(tileId);
@@ -226,7 +407,10 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
           });
           await bridge.openTerminal({ id: tileId, profileId, sessionName, url, protocols: protocols ?? [] });
           if (isDisposed) { void bridge.closeTerminal(tileId); return; }
-          term.onData((data) => { if (ready && !failed) void bridge.sendTerminal(tileId, data).catch(() => {}); });
+          term.onData((data) => {
+            const allowMirror = shouldMirrorInput();
+            if (sendLocalInput(data)) mirrorIfAllowed(data, allowMirror);
+          });
           term.onResize(({ cols, rows }) => { void bridge.resizeTerminal(tileId, cols, rows).catch(() => {}); });
           return;
         }
@@ -257,10 +441,17 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
 
     return () => {
       isDisposed = true;
+      for (const timer of demoTimers) clearTimeout(timer);
+      demoTimers.clear();
+      unregisterRegistry();
       const state = useAppStore.getState();
+      const skipSave = skipNextHistorySaveRef.current;
+      skipNextHistorySaveRef.current = false;
       const keepHistory = state.tiles.some((tile) => tile.tileId === tileId) &&
         (profileId.startsWith('demo-') || state.isVaultUnlocked);
-      if (keepHistory && restoreComplete) {
+      if (skipSave) {
+        terminalHistoryCache.clearSession(tileId, sessionName);
+      } else if (keepHistory && restoreComplete) {
         try {
           const buffer = term.buffer.active;
           terminalHistoryCache.save(tileId, profileId, sessionName,
@@ -274,6 +465,7 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
       unregisterDesktop?.();
       if (bridge) void bridge.closeTerminal(tileId);
       useAppStore.getState().releaseSession(tileId);
+      useAppStore.getState().clearSessionActivity(tileId);
       term.dispose();
       if (termRef.current === term) termRef.current = null;
       if (fitAddonRef.current === fitAddon) fitAddonRef.current = null;
@@ -285,8 +477,12 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
     retryTimerRef.current = null;
     retryAttemptRef.current = 0;
     setRetryInfo(null);
-    if (termRef.current) {
-      termRef.current.clear();
+    skipNextHistorySaveRef.current = true;
+    terminalHistoryCache.clearSession(tileId, sessionName);
+    const term = termRef.current as (Terminal & { reset?: () => void }) | null;
+    if (term) {
+      if (typeof term.reset === 'function') term.reset();
+      else term.clear();
     }
     setRetryGeneration((value) => value + 1);
   };
@@ -295,6 +491,9 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
     terminalHistoryCache.clearSession(tileId, sessionName);
     termRef.current?.clear();
   };
+
+  reconnectRef.current = handleReconnect;
+  clearRef.current = handleClear;
 
   return (
     <div data-terminal-panel className="flex flex-col h-full bg-[#09090b] overflow-hidden select-text">
@@ -318,6 +517,18 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
           {tileCount > 1 && <span className="text-zinc-500 text-[10px]" title="Wheel scrolls terminal history; Shift+wheel scrolls VM tiles">
             WHEEL: TERM · SHIFT+WHEEL: TILES
           </span>}
+
+          {isMirrored && (
+            <span
+              className={`px-1.5 py-0.5 text-[10px] font-bold border ${
+                isSensitiveMirrorPaused
+                  ? 'border-amber-600 bg-amber-950/50 text-amber-200'
+                  : 'border-swiss-red bg-swiss-red/20 text-red-300'
+              }`}
+            >
+              {isSensitiveMirrorPaused ? 'MIRROR PAUSED (SECRET)' : 'SYNC MIRROR'}
+            </span>
+          )}
 
           {/* 세션 선택 */}
           <div className="flex items-center space-x-1">

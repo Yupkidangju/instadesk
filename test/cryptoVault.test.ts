@@ -186,4 +186,48 @@ describe('CryptoVault E2EE & On-Demand Decryption', () => {
     const raw = localStorage.getItem('instabox_deck_vault_v1')!;
     expect(raw).not.toContain('ibk_fixture_');
   });
+
+  it('resets failedUnlockAttempts after a successful unlock before the 10th attempt', async () => {
+    await cryptoVault.initializeVault('long-test-passphrase-2026');
+    const id = await cryptoVault.addProfile('Prod', 'ibk_secret_prod');
+    cryptoVault.lock();
+
+    for (let i = 1; i <= 3; i += 1) {
+      await expect(cryptoVault.unlock(`wrong-attempt-${i}`)).rejects.toThrow(VaultInvalidPasswordError);
+      expect(cryptoVault.getFailedUnlockAttempts()).toBe(i);
+    }
+
+    expect(localStorage.getItem('instabox_deck_vault_v1')).not.toBeNull();
+    await expect(cryptoVault.unlock('long-test-passphrase-2026')).resolves.toBe(true);
+    expect(cryptoVault.getFailedUnlockAttempts()).toBe(0);
+    expect(await cryptoVault.withDecryptedKey(id, async (key) => key)).toBe('ibk_secret_prod');
+  });
+
+  it('wipes stored vault data after 10 failed unlock attempts', async () => {
+    await cryptoVault.initializeVault('long-test-passphrase-2026');
+    await cryptoVault.addProfile('Prod', 'ibk_secret_prod');
+    cryptoVault.lock();
+
+    for (let i = 1; i <= 9; i += 1) {
+      await expect(cryptoVault.unlock(`wrong-pass-${i}`)).rejects.toMatchObject({
+        name: 'VaultInvalidPasswordError',
+        failedAttempts: i,
+        wiped: false,
+      });
+      expect(cryptoVault.isInitialized()).toBe(true);
+      expect(cryptoVault.listProfiles()).toHaveLength(1);
+    }
+
+    await expect(cryptoVault.unlock('wrong-pass-10')).rejects.toMatchObject({
+      name: 'VaultInvalidPasswordError',
+      failedAttempts: 10,
+      wiped: true,
+    });
+
+    expect(localStorage.getItem('instabox_deck_vault_v1')).toBeNull();
+    expect(cryptoVault.isInitialized()).toBe(false);
+    expect(cryptoVault.isUnlocked()).toBe(false);
+    expect(cryptoVault.listProfiles()).toEqual([]);
+    expect(cryptoVault.getFailedUnlockAttempts()).toBe(0);
+  });
 });

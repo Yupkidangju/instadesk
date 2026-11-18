@@ -65,7 +65,7 @@ export const SplitWorkspaceView: React.FC<SplitWorkspaceViewProps> = (props) => 
         className={`${horizontal ? 'w-2 cursor-col-resize' : 'h-2 cursor-row-resize'} shrink-0 bg-zinc-800 hover:bg-swiss-red focus:bg-swiss-red focus:outline-none touch-none`}
       />
       <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
-        <DesktopScreenView machineId={props.machineId} profileId={props.profileId}
+        <DesktopScreenView tileId={props.tileId} machineId={props.machineId} profileId={props.profileId}
           viewOnly={props.viewOnly} onViewOnlyChange={props.onViewOnlyChange} />
       </div>
     </div>

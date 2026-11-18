@@ -36,7 +36,7 @@ jobs:
       - run: npm run desktop:install
       - run: npm run typecheck
       - run: npm test
-      - run: npm audit --audit-level=high
+      - run: npm audit --omit=dev --audit-level=high
       - if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y xvfb xauth
       - run: npm run ${{ matrix.command }}

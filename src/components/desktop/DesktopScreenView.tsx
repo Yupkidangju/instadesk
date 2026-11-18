@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 
 interface DesktopScreenViewProps {
+  tileId?: string;
   machineId: string;
   profileId: string;
   viewOnly: boolean;
@@ -25,6 +26,7 @@ interface DesktopScreenViewProps {
 }
 
 export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
+  tileId,
   machineId,
   profileId,
   viewOnly,
@@ -49,7 +51,8 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
   const machineReady = !machineState || machineState === 'running';
   const tileCount = useAppStore((state) => state.tiles.length);
   const gridMode = useAppStore((state) => state.gridMode);
-  const viewId = `desktop_${profileId}_${machineId}`;
+  const normalizedTileId = tileId ? tileId.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 240) : '';
+  const viewId = normalizedTileId ? `desktop_${normalizedTileId}` : `desktop_${profileId}_${machineId}`;
   const frameWidth = desktopStatus?.width || resolution.width;
   const frameHeight = desktopStatus?.height || resolution.height;
   const fitted = fitDesktop(frameWidth, frameHeight, viewport.width, viewport.height);

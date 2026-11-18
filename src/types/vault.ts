@@ -23,6 +23,7 @@ export interface LocalVaultStorage {
   verifierIv: string;     // 검증용 IV (Base64)
   profiles: EncryptedProfileRecord[];
   autoLockMinutes: number; // 기본값: 15
+  failedUnlockAttempts?: number; // 누적 해제 실패 횟수 (10회 이상 실패 시 볼트 삭제)
 }
 
 /**

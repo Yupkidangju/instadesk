@@ -6,6 +6,7 @@ const VERIFIER_PLAINTEXT = 'INSTABOX_DECK_E2EE_VERIFIER_TOKEN_OK';
 const LEGACY_ITERATIONS = 100_000;
 const CURRENT_ITERATIONS = 600_000;
 const MIN_PASSPHRASE_LENGTH = 15;
+export const MAX_FAILED_UNLOCK_ATTEMPTS = 10;
 
 export class VaultLockedError extends Error {
   constructor(message = 'Vault is locked. Master password required.') {
@@ -15,7 +16,12 @@ export class VaultLockedError extends Error {
 }
 
 export class VaultInvalidPasswordError extends Error {
-  constructor(message = 'Invalid master password.') {
+  constructor(
+    message = 'Invalid master password.',
+    public readonly failedAttempts?: number,
+    public readonly maxAttempts: number = MAX_FAILED_UNLOCK_ATTEMPTS,
+    public readonly wiped: boolean = false
+  ) {
     super(message);
     this.name = 'VaultInvalidPasswordError';
   }
@@ -89,6 +95,19 @@ class CryptoVaultManager {
     return this.autoLockMinutes;
   }
 
+  public getFailedUnlockAttempts(): number {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return 0;
+    try {
+      const vaultData: LocalVaultStorage = JSON.parse(raw);
+      return Number.isInteger(vaultData.failedUnlockAttempts) && (vaultData.failedUnlockAttempts ?? 0) > 0
+        ? vaultData.failedUnlockAttempts!
+        : 0;
+    } catch {
+      return 0;
+    }
+  }
+
   /**
    * 볼트 강제 잠금 (메모리에서 마스터 키 즉시 소멸)
    */
@@ -131,6 +150,7 @@ class CryptoVaultManager {
       verifierIv: this.bytesToBase64(verifierIv),
       profiles: [],
       autoLockMinutes,
+      failedUnlockAttempts: 0,
     };
 
     if (epoch !== this.operationEpoch || this.isInitialized()) throw new Error('Vault changed during initialization.');
@@ -173,13 +193,56 @@ class CryptoVaultManager {
       }
 
     } catch {
-      throw new VaultInvalidPasswordError();
+      const latestRaw = localStorage.getItem(STORAGE_KEY);
+      if (!latestRaw) {
+        throw new VaultInvalidPasswordError();
+      }
+      let latestVault: LocalVaultStorage;
+      try {
+        latestVault = JSON.parse(latestRaw);
+      } catch {
+        throw new VaultInvalidPasswordError();
+      }
+      if (
+        latestVault.salt !== vaultData.salt ||
+        latestVault.verifierCiphertext !== vaultData.verifierCiphertext
+      ) {
+        throw new VaultInvalidPasswordError();
+      }
+      const previousAttempts =
+        Number.isInteger(latestVault.failedUnlockAttempts) && (latestVault.failedUnlockAttempts ?? 0) > 0
+          ? latestVault.failedUnlockAttempts!
+          : 0;
+      const nextAttempts = previousAttempts + 1;
+      if (nextAttempts >= MAX_FAILED_UNLOCK_ATTEMPTS) {
+        this.resetVault();
+        throw new VaultInvalidPasswordError(
+          `Invalid master password. Maximum failed attempts (${MAX_FAILED_UNLOCK_ATTEMPTS}) reached — stored vault data has been erased.`,
+          nextAttempts,
+          MAX_FAILED_UNLOCK_ATTEMPTS,
+          true
+        );
+      }
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ ...latestVault, failedUnlockAttempts: nextAttempts })
+      );
+      this.notify();
+      throw new VaultInvalidPasswordError(
+        `Invalid master password. (${nextAttempts}/${MAX_FAILED_UNLOCK_ATTEMPTS} failed attempts — vault will be erased at ${MAX_FAILED_UNLOCK_ATTEMPTS})`,
+        nextAttempts,
+        MAX_FAILED_UNLOCK_ATTEMPTS,
+        false
+      );
     }
     // v1 원본을 유지한 채 전 프로필의 재암호화가 끝난 경우에만 한 번 저장한다.
     const activeKey = vaultData.version === 1
       ? await this.reencryptVault(vaultData, candidateKey, password, raw, epoch)
       : candidateKey;
     if (epoch !== this.operationEpoch) throw new VaultLockedError();
+    if (vaultData.version !== 1 && (vaultData.failedUnlockAttempts ?? 0) > 0 && localStorage.getItem(STORAGE_KEY) === raw) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...vaultData, failedUnlockAttempts: 0 }));
+    }
     this.masterKey = activeKey;
     this.autoLockMinutes = vaultData.autoLockMinutes || 15;
     this.resetActivityTimer();
@@ -224,7 +287,8 @@ class CryptoVaultManager {
       profiles.push({ ...record, encryptedData: `${this.bytesToBase64(iv)}:${this.bytesToBase64(new Uint8Array(encrypted))}` });
     }
     const next: LocalVaultStorage = { ...data, version: 2, salt: this.bytesToBase64(salt),
-      verifierIv: this.bytesToBase64(verifierIv), verifierCiphertext: this.bytesToBase64(new Uint8Array(verifierCiphertext)), profiles };
+      verifierIv: this.bytesToBase64(verifierIv), verifierCiphertext: this.bytesToBase64(new Uint8Array(verifierCiphertext)),
+      profiles, failedUnlockAttempts: 0 };
     if (epoch !== this.operationEpoch || localStorage.getItem(STORAGE_KEY) !== original) {
       throw new Error('Vault changed during migration. Retry after reopening.');
     }

@@ -11,6 +11,7 @@ import {
   Trash2,
   Server,
   Layers,
+  Plus,
 } from 'lucide-react';
 import { InstaboxMachine, MachineState } from '../types/instabox';
 
@@ -30,7 +31,10 @@ export const SidebarVmList: React.FC<SidebarVmListProps> = ({ isOpen, onClose })
     setProfileFilter,
     profiles,
     profileErrors,
+    tiles,
+    sessionActivities,
     addTile,
+    addNextSessionTile,
     controlMachine,
     deleteMachine,
   } = useAppStore();
@@ -191,6 +195,7 @@ export const SidebarVmList: React.FC<SidebarVmListProps> = ({ isOpen, onClose })
             const isRunning = m.state === 'running';
             const isSuspended = m.state === 'suspended';
             const isStopped = m.state === 'stopped';
+            const vmTiles = tiles.filter((t) => t.machineId === m.id && t.profileId === m.profileId);
 
             return (
               <div
@@ -217,13 +222,38 @@ export const SidebarVmList: React.FC<SidebarVmListProps> = ({ isOpen, onClose })
                 </div>
 
                 {/* 메타 스펙 바 */}
-                <div className="flex items-center space-x-2 font-mono text-[10px] text-zinc-400 bg-zinc-900/70 p-1 border border-zinc-900 mb-2.5">
+                <div className="flex items-center space-x-2 font-mono text-[10px] text-zinc-400 bg-zinc-900/70 p-1 border border-zinc-900 mb-2">
                   <span>{m.spec.vcpus} vCPU</span>
                   <span>·</span>
                   <span>{Math.round(m.spec.memMiB / 1024)} GiB</span>
                   <span>·</span>
                   <span>{m.spec.persistentDiskGiB}G SSD</span>
                 </div>
+
+                {vmTiles.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {vmTiles.map((t) => {
+                      const act = sessionActivities[t.tileId]?.status ?? 'disconnected';
+                      const dotClass =
+                        act === 'running'
+                          ? 'bg-red-500 animate-pulse'
+                          : act === 'prompt'
+                            ? 'bg-amber-400 animate-pulse'
+                            : act === 'idle'
+                              ? 'bg-emerald-500'
+                              : 'bg-zinc-600';
+                      return (
+                        <span
+                          key={t.tileId}
+                          className="inline-flex items-center space-x-1 px-1.5 py-0.5 text-[9px] font-mono border border-zinc-800 bg-zinc-900 text-zinc-300"
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${dotClass}`} />
+                          <span>{t.terminalSessionName.toUpperCase()}</span>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
 
                 {/* 하단 제어 버튼 행 */}
                 <div className="flex items-center justify-between pt-1 border-t border-zinc-900">
@@ -251,6 +281,19 @@ export const SidebarVmList: React.FC<SidebarVmListProps> = ({ isOpen, onClose })
                     >
                       <Monitor className="w-3 h-3 mr-1 text-swiss-red" />
                       DESK
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        addNextSessionTile(m.id, m.profileId, 'terminal');
+                        onClose();
+                      }}
+                      title="Open another session tile (main / agent / aux) for this VM"
+                      className="neo-btn px-1.5 py-0.5 text-[10px] hover:text-white"
+                    >
+                      <Plus className="w-3 h-3 mr-0.5 text-emerald-400" />
+                      SESS
                     </button>
                   </div>
 

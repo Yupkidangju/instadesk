@@ -114,7 +114,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({ sidebarOpen, onToggleSideb
           )
         ) : (
           <button
-            onClick={openApiKeyModal}
+            onClick={openUnlockModal}
             className="flex items-center space-x-1.5 border border-zinc-700 bg-zinc-900 px-2 py-1 hover:border-zinc-500 transition-colors"
           >
             <Shield className="w-3.5 h-3.5 text-zinc-400" />
