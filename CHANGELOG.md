@@ -5,6 +5,15 @@ All notable changes to the InstaBox Deck project will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1] - 2026-11-25
+
+### Fixed
+- `BUILD_GUIDE.md`, `audit_roadmap.md`, `IMPLEMENTATION_SUMMARY.md`의 `2.2.0` 버전·CI/릴리스 증거·테스트 목록을 동기화합니다.
+- `ApiKeyModal`의 볼트 생성/잠금 해제/암호 변경 폼 중복 제출을 차단하고 `cryptoVault.unlock()` 성공 경로 카운터 초기화를 최신 저장소 기준으로 보강합니다.
+- `electron/apiGateway.ts`의 허용 경로를 `/v1/machines` 범위로 제한하고 `%2f`/`%5c`/`%00` 인코딩 구분자를 거부하며, `instaboxClient`와 프리셋 로더의 `machineId`/`profileId` 형식을 검증합니다.
+- `MetricsLogsView`에 오류 배너·`Promise.allSettled` 부분 성공 처리를 추가하고 `MetricsLogsView`·`ProcessListView`·`DesktopScreenView`에 요청 세대 및 언마운트 가드를 적용합니다.
+- `CreateVmModal`의 생성 성공 및 재오픈 시 `name` 입력을 초기화하고, `SidebarVmList`의 전원 제어·삭제 액션에 오류 표시 및 중복 클릭 방지를 추가합니다.
+
 ## [2.2.0] - 2026-11-18
 
 ### Added

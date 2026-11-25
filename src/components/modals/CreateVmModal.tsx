@@ -26,6 +26,7 @@ export const CreateVmModal: React.FC = () => {
   useEffect(() => {
     if (isCreateVmModalOpen) {
       setProfileId(isVaultUnlocked && profiles.length ? profiles[0].id : isDemoMode ? 'demo-default' : '');
+      setName('');
       setErrorMsg(null);
     }
   }, [isCreateVmModalOpen]);
@@ -51,6 +52,7 @@ export const CreateVmModal: React.FC = () => {
 
       await refreshMachines();
       addTile(result.machineId, profileId, 'terminal');
+      setName('');
       closeCreateVmModal();
     } catch (err: unknown) {
       setErrorMsg((err as Error).message || 'Failed to create machine');

@@ -16,6 +16,7 @@ import { terminalHistoryCache } from '../components/terminal/terminalHistoryCach
 
 const PRESETS_STORAGE_KEY = 'instabox_deck_presets_v1';
 const SESSION_SEQUENCE: TerminalSessionName[] = ['main', 'agent', 'aux'];
+const SAFE_IDENTIFIER = /^[A-Za-z0-9_-]{1,128}$/;
 const VALID_GRID_MODES = new Set<GridMode>(['1x1', '2x1', '2x2', 'auto']);
 const VALID_PANEL_TABS = new Set<WorkspacePanelType>(['terminal', 'desktop', 'split', 'exec', 'logs', 'processes']);
 const VALID_SESSIONS = new Set<TerminalSessionName>(SESSION_SEQUENCE);
@@ -26,10 +27,8 @@ function sanitizePresetTile(raw: unknown): WorkspaceTilePresetItem | null {
   if (
     typeof candidate.machineId !== 'string' ||
     typeof candidate.profileId !== 'string' ||
-    !candidate.machineId.trim() ||
-    !candidate.profileId.trim() ||
-    candidate.machineId.length > 128 ||
-    candidate.profileId.length > 128
+    !SAFE_IDENTIFIER.test(candidate.machineId) ||
+    !SAFE_IDENTIFIER.test(candidate.profileId)
   ) {
     return null;
   }

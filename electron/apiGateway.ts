@@ -12,8 +12,14 @@ export async function proxyApiRequest(
   } catch {
     return new Response('Not found', { status: 404 });
   }
-  if (incoming.protocol !== 'app:' || incoming.hostname !== 'instadesk' ||
-      !incoming.pathname.startsWith(`${prefix}/v1/`)) {
+  const apiPath = incoming.pathname.startsWith(prefix) ? incoming.pathname.slice(prefix.length) : '';
+  if (
+    incoming.protocol !== 'app:' ||
+    incoming.hostname !== 'instadesk' ||
+    !incoming.pathname.startsWith(`${prefix}/v1/`) ||
+    (apiPath !== '/v1/machines' && !apiPath.startsWith('/v1/machines/')) ||
+    /%(?:2f|5c|00)/i.test(incoming.pathname)
+  ) {
     return new Response('Not found', { status: 404 });
   }
   if (!allowedMethods.has(request.method)) return new Response('Method not allowed', { status: 405 });
@@ -27,7 +33,7 @@ export async function proxyApiRequest(
     const value = request.headers.get(name);
     if (value) headers.set(name, value);
   }
-  const target = `https://api.instabox.sh${incoming.pathname.slice(prefix.length)}${incoming.search}`;
+  const target = `https://api.instabox.sh${apiPath}${incoming.search}`;
   const init: RequestInit & { duplex?: 'half' } = {
     method: request.method,
     headers,

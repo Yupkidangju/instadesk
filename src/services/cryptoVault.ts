@@ -240,8 +240,22 @@ class CryptoVaultManager {
       ? await this.reencryptVault(vaultData, candidateKey, password, raw, epoch)
       : candidateKey;
     if (epoch !== this.operationEpoch) throw new VaultLockedError();
-    if (vaultData.version !== 1 && (vaultData.failedUnlockAttempts ?? 0) > 0 && localStorage.getItem(STORAGE_KEY) === raw) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...vaultData, failedUnlockAttempts: 0 }));
+    if (vaultData.version !== 1) {
+      const latestRaw = localStorage.getItem(STORAGE_KEY);
+      if (latestRaw) {
+        try {
+          const latestVault: LocalVaultStorage = JSON.parse(latestRaw);
+          if (
+            latestVault.salt === vaultData.salt &&
+            latestVault.verifierCiphertext === vaultData.verifierCiphertext &&
+            (latestVault.failedUnlockAttempts ?? 0) > 0
+          ) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...latestVault, failedUnlockAttempts: 0 }));
+          }
+        } catch {
+          // ignore malformed concurrent storage write
+        }
+      }
     }
     this.masterKey = activeKey;
     this.autoLockMinutes = vaultData.autoLockMinutes || 15;

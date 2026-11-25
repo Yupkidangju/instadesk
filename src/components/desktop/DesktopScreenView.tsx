@@ -42,6 +42,8 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
     height: 800,
   });
   const viewportRef = useRef<HTMLDivElement>(null);
+  const loadGenerationRef = useRef(0);
+  const mountedRef = useRef(true);
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
   const [nativeStatus, setNativeStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
   const modalOpen = useAppStore((state) => state.isApiKeyModalOpen || state.isUnlockModalOpen ||
@@ -76,8 +78,18 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      loadGenerationRef.current += 1;
+    };
+  }, []);
+
   // 데스크톱 상태 및 스트림 URL 로드
   const loadDesktop = async () => {
+    const generation = ++loadGenerationRef.current;
+    const isCurrent = () => mountedRef.current && generation === loadGenerationRef.current;
     setIsLoading(true);
     setErrorMessage(null);
     setStreamUrl(null);
@@ -88,24 +100,27 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
     try {
       // 1. 데스크톱 상태 확인
       const status = await instaboxClient.desktopAction(profileId, machineId, 'status');
+      if (!isCurrent()) return;
       setDesktopStatus(status);
 
       // 2. 데스크톱이 이미 실행 중이면 스트림 링크 발급
       if (status.running) {
         const stream = await instaboxClient.createDesktopStreamLink(profileId, machineId, viewOnly);
+        if (!isCurrent()) return;
         setStreamUrl(stream.url);
       } else {
         setStreamUrl(null);
       }
     } catch (err: unknown) {
+      if (!isCurrent()) return;
       setErrorMessage((err as Error).message || 'Failed to check desktop status');
     } finally {
-      setIsLoading(false);
+      if (isCurrent()) setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    loadDesktop();
+    void loadDesktop();
   }, [machineId, profileId, viewOnly, machineReady]);
 
   useEffect(() => {
@@ -156,6 +171,8 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
 
   // 데스크톱 시작 (Xvfb + Xfce + Chromium)
   const handleStartDesktop = async () => {
+    const generation = ++loadGenerationRef.current;
+    const isCurrent = () => mountedRef.current && generation === loadGenerationRef.current;
     setIsStarting(true);
     setErrorMessage(null);
     try {
@@ -166,26 +183,33 @@ export const DesktopScreenView: React.FC<DesktopScreenViewProps> = ({
         resolution.width,
         resolution.height
       );
+      if (!isCurrent()) return;
       setDesktopStatus(status);
       const stream = await instaboxClient.createDesktopStreamLink(profileId, machineId, viewOnly);
+      if (!isCurrent()) return;
       setStreamUrl(stream.url);
     } catch (err: unknown) {
+      if (!isCurrent()) return;
       setErrorMessage((err as Error).message || 'Failed to start desktop environment');
     } finally {
-      setIsStarting(false);
+      if (mountedRef.current) setIsStarting(false);
     }
   };
 
   // 제어권 인수(Takeover) / 반환(Handback) 토글
   const handleToggleTakeover = async () => {
     if (!machineReady || !desktopStatus?.running) return;
+    const generation = ++loadGenerationRef.current;
+    const isCurrent = () => mountedRef.current && generation === loadGenerationRef.current;
     try {
       const isCurrentlyHuman = desktopStatus.controller === 'human';
       const action = isCurrentlyHuman ? 'handback' : 'takeover';
       const updated = await instaboxClient.desktopAction(profileId, machineId, action);
+      if (!isCurrent()) return;
       setDesktopStatus(updated);
       onViewOnlyChange(isCurrentlyHuman);
     } catch (err: unknown) {
+      if (!isCurrent()) return;
       setErrorMessage((err as Error).message);
     }
   };

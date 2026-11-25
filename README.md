@@ -6,14 +6,14 @@
 
 **InstaDesk** is a desktop app for managing [InstaBox](https://instabox.sh) virtual machines with your own API key. Add a key, see the VMs available to its workspace, and work with terminals, desktops, and commands from one window.
 
-**Download:** [InstaDesk v2.2.0](https://github.com/Yupkidangju/instadesk/releases/tag/v2.2.0) · Windows x64 · Linux x64 · Linux arm64
+**Download:** [InstaDesk v2.2.1](https://github.com/Yupkidangju/instadesk/releases/tag/v2.2.1) · Windows x64 · Linux x64 · Linux arm64
 
 ### Install
 
-**Windows:** Download `InstaDesk-2.2.0-win-x64.zip` and `SHA256SUMS.txt` from the same release. In the download folder, verify the ZIP in PowerShell before extracting it:
+**Windows:** Download `InstaDesk-2.2.1-win-x64.zip` and `SHA256SUMS.txt` from the same release. In the download folder, verify the ZIP in PowerShell before extracting it:
 
 ```powershell
-$archive = 'InstaDesk-2.2.0-win-x64.zip'
+$archive = 'InstaDesk-2.2.1-win-x64.zip'
 $entry = @(Get-Content -LiteralPath 'SHA256SUMS.txt' | Where-Object { ($_ -split '\s+', 2)[1] -eq $archive })
 if ($entry.Count -ne 1) { throw 'Checksum entry missing or duplicated' }
 $expected = ($entry[0] -split '\s+', 2)[0].ToLowerInvariant()
@@ -28,7 +28,7 @@ Extract the whole archive and run `InstaDesk.exe` inside the extracted folder.
 
 ```bash
 set -euo pipefail
-name=InstaDesk-2.2.0-linux-x64
+name=InstaDesk-2.2.1-linux-x64
 grep -F "  ${name}.tar.gz" SHA256SUMS.txt | sha256sum -c -
 sudo install -d -m 0755 /opt/instadesk
 sudo tar -xzf "${name}.tar.gz" -C /opt/instadesk
@@ -72,14 +72,14 @@ Apache License 2.0. Copyright 2026 Yupkidangju <yupkidangju@gmail.com>. [License
 
 **InstaDesk**는 본인의 API 키로 [InstaBox](https://instabox.sh) 가상 머신을 관리하는 데스크톱 앱입니다. 키를 등록하면 해당 워크스페이스의 VM을 한 창에서 확인하고 터미널, 데스크톱, 명령 실행을 사용할 수 있습니다.
 
-**다운로드:** [InstaDesk v2.2.0](https://github.com/Yupkidangju/instadesk/releases/tag/v2.2.0) · Windows x64 · Linux x64 · Linux arm64
+**다운로드:** [InstaDesk v2.2.1](https://github.com/Yupkidangju/instadesk/releases/tag/v2.2.1) · Windows x64 · Linux x64 · Linux arm64
 
 ### 설치
 
-**Windows:** 같은 릴리스의 `InstaDesk-2.2.0-win-x64.zip`과 `SHA256SUMS.txt`를 내려받습니다. 내려받은 폴더에서 압축을 풀기 전에 PowerShell로 확인하세요.
+**Windows:** 같은 릴리스의 `InstaDesk-2.2.1-win-x64.zip`과 `SHA256SUMS.txt`를 내려받습니다. 내려받은 폴더에서 압축을 풀기 전에 PowerShell로 확인하세요.
 
 ```powershell
-$archive = 'InstaDesk-2.2.0-win-x64.zip'
+$archive = 'InstaDesk-2.2.1-win-x64.zip'
 $entry = @(Get-Content -LiteralPath 'SHA256SUMS.txt' | Where-Object { ($_ -split '\s+', 2)[1] -eq $archive })
 if ($entry.Count -ne 1) { throw 'Checksum entry missing or duplicated' }
 $expected = ($entry[0] -split '\s+', 2)[0].ToLowerInvariant()
@@ -94,7 +94,7 @@ if ($actual -ne $expected) { throw 'Checksum mismatch' }
 
 ```bash
 set -euo pipefail
-name=InstaDesk-2.2.0-linux-x64
+name=InstaDesk-2.2.1-linux-x64
 grep -F "  ${name}.tar.gz" SHA256SUMS.txt | sha256sum -c -
 sudo install -d -m 0755 /opt/instadesk
 sudo tar -xzf "${name}.tar.gz" -C /opt/instadesk

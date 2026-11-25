@@ -1,5 +1,5 @@
 // src/components/telemetry/ProcessListView.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { instaboxClient } from '../../services/instaboxClient';
 import { ProcessListResponse } from '../../types/instabox';
 import { RefreshCw, Cpu } from 'lucide-react';
@@ -13,22 +13,36 @@ export const ProcessListView: React.FC<ProcessListViewProps> = ({ machineId, pro
   const [data, setData] = useState<ProcessListResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
+  const mountedRef = useRef(true);
 
   const loadProcesses = async () => {
+    const requestId = ++requestIdRef.current;
     setIsLoading(true);
     setErrorMessage(null);
     try {
       const res = await instaboxClient.getProcesses(profileId, machineId);
+      if (!mountedRef.current || requestId !== requestIdRef.current) return;
       setData(res);
     } catch (err: unknown) {
+      if (!mountedRef.current || requestId !== requestIdRef.current) return;
       setErrorMessage((err as Error).message || 'Failed to list processes');
     } finally {
-      setIsLoading(false);
+      if (mountedRef.current && requestId === requestIdRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
   useEffect(() => {
-    loadProcesses();
+    mountedRef.current = true;
+    setData(null);
+    setErrorMessage(null);
+    void loadProcesses();
+    return () => {
+      mountedRef.current = false;
+      requestIdRef.current += 1;
+    };
   }, [machineId, profileId]);
 
   return (

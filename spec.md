@@ -1,8 +1,8 @@
 # InstaDesk 데스크톱 명세
 
-**Document Version:** 2.2.0 (멀티세션 동시 제어·상태 인디케이터·볼트 보호 확장)
-**Status:** `v2.2.0` 릴리스 준비. 멀티세션 타일(동일 VM 내 `main`/`agent`/`aux` 동시 오픈), 실시간 세션 상태 인디케이터(🔴/🟡/🟢), 라이브 PTY 동시 입력·미러링, 워크스페이스 프리셋, 볼트 미초기화 생성/10회 실패 삭제 반영. 물리 트랙패드·복수 실제 Desktop·실 API 키 원격 수용·Linux 물리 기기 설치·서명/무결성은 별도 검증 대상
-**Last Updated:** 2026-11-18
+**Document Version:** 2.2.1 (Audit 8 보안·동시성·문서 경계 보강)
+**Status:** `v2.2.1` 릴리스 준비. 멀티세션 타일(동일 VM 내 `main`/`agent`/`aux` 동시 오픈), 실시간 세션 상태 인디케이터(🔴/🟡/🟢), 라이브 PTY 동시 입력·미러링, 워크스페이스 프리셋, 볼트 미초기화 생성/10회 실패 삭제, API 경로·식별자 검증 및 UI 동시성/오류 가드 반영. 물리 트랙패드·복수 실제 Desktop·실 API 키 원격 수용·Linux 물리 기기 설치·서명/무결성은 별도 검증 대상
+**Last Updated:** 2026-11-25
 
 ---
 
@@ -101,7 +101,7 @@ Electron의 `userData`와 `sessionData`는 버전이 들어가지 않는 OS 사�
 
 ### 3.4 잠금과 프로필 삭제
 - 수동/자동 잠금은 앱이 소유한 실 프로필 요청·PTY·데스크톱 타일과 Broadcast 실행·라이브 동기화 입력 바 내용·키스트로크 미러링(`isKeystrokeMirroring`)을 중단·초기화하고 해당 명령·출력을 지운다. 이후 잠금 해제 전 재연결하지 않는다.
-- 워크스페이스 프리셋(`instabox_deck_presets_v1`)은 타일 배치 메타데이터(`machineId`, `profileId`, `activeTab`, `terminalSessionName`, `desktopViewOnly`, `gridMode`)만 보관하며 API 키·암호·명령 입력값·터미널 출력은 저장하지 않는다. 로드·적용 시 각 타일 필드 스키마와 열거값을 검증·정규화하고 중복 세션을 제거한다. 잠금 상태에서 실 프로필 전용 프리셋을 적용하려 할 때는 잠금 해제 모달을 열어 잠금 해제를 유도하며, 혼합 프리셋이면 데모 타일만 복원한다.
+- 워크스페이스 프리셋(`instabox_deck_presets_v1`)은 타일 배치 메타데이터(`machineId`, `profileId`, `activeTab`, `terminalSessionName`, `desktopViewOnly`, `gridMode`)만 보관하며 API 키·암호·명령 입력값·터미널 출력은 저장하지 않는다. 로드·적용 시 각 타일 필드 스키마와 열거값을 검증·정규화(`machineId`, `profileId`는 `/^[A-Za-z0-9_-]{1,128}$/`)하고 중복 세션을 제거한다. 잠금 상태에서 실 프로필 전용 프리셋을 적용하려 할 때는 잠금 해제 모달을 열어 잠금 해제를 유도하며, 혼합 프리셋이면 데모 타일만 복원한다.
 - 프로필 삭제는 볼트 잠금 해제와 대상 이름·ID 확인을 요구한다. 로컬 암호화 키 기록의 삭제는 복구할 수 없다. 대상 프로필의 요청·PTY·데스크톱·명령 출력은 앱에서 닫되 다른 프로필의 연결은 유지한다. 서버 티켓과 이미 연 외부 탭의 원격 취소는 보장하지 않는다.
 
 ---
@@ -136,7 +136,7 @@ Electron의 `userData`와 `sessionData`는 버전이 들어가지 않는 OS 사�
 
 ### 4.3 Electron 보안·통신 경계
 - 렌더러는 `nodeIntegration: false`, `contextIsolation: true`, `sandbox: true`, `webSecurity: true`로 로컬 번들만 로드한다. 메인 프로세스는 고정 `https://api.instabox.sh` REST/SSE와 허용된 `wss://api.instabox.sh` 또는 `wss://connect.instabox.sh` PTY만 연결한다.
-- 렌더러는 API 키를 요청 직전에 복호화해 로컬 메인 프로세스로 전달한다. 메인 프로세스는 키를 디스크에 기록하거나 로그로 출력하지 않고, 목적지/메서드/경로를 검증한다. 잠금·프로필 삭제 시 진행 중 요청과 PTY를 종료한다.
+- 렌더러는 API 키를 요청 직전에 복호화해 로컬 메인 프로세스로 전달한다. 메인 프로세스는 키를 디스크에 기록하거나 로그로 출력하지 않고, 목적지/메서드/경로(`/instabox-api/v1/machines` 및 하위 경로, `/%(?:2f|5c|00)/i` 차단)를 검증한다. 렌더러 클라이언트 또한 API 경로 조합 전 `machineId`를 `/^[A-Za-z0-9_-]{1,128}$/`로 검증·인코딩한다. 잠금·프로필 삭제 시 진행 중 요청과 PTY를 종료한다.
 - 좁게 정의한 preload IPC만 렌더러에 노출한다. 원격 Desktop 콘텐츠와 외부 링크는 Node/Electron 권한을 받지 않는다. Desktop 서명 링크와 PTY 티켓 규격은 허가된 실제 키로 검증해야 한다.
 
 ---

@@ -230,4 +230,19 @@ describe('CryptoVault E2EE & On-Demand Decryption', () => {
     expect(cryptoVault.listProfiles()).toEqual([]);
     expect(cryptoVault.getFailedUnlockAttempts()).toBe(0);
   });
+
+  it('accumulates concurrent failed unlock attempts and resets on subsequent valid unlock (SEC-F012)', async () => {
+    await cryptoVault.initializeVault('long-test-passphrase-2026');
+    cryptoVault.lock();
+
+    const results = await Promise.allSettled([
+      cryptoVault.unlock('wrong-parallel-1'),
+      cryptoVault.unlock('wrong-parallel-2'),
+    ]);
+    expect(results.every((r) => r.status === 'rejected')).toBe(true);
+    expect(cryptoVault.getFailedUnlockAttempts()).toBe(2);
+
+    await expect(cryptoVault.unlock('long-test-passphrase-2026')).resolves.toBe(true);
+    expect(cryptoVault.getFailedUnlockAttempts()).toBe(0);
+  });
 });

@@ -337,6 +337,9 @@ describe('multi-session control, traffic-light indicators, and presets', () => {
           gridMode: 'invalid-grid',
           tiles: [
             { machineId: null, profileId: 'demo-default' },
+            { machineId: '../other-endpoint', profileId: 'real_p1' },
+            { machineId: 'm_1%2fbad', profileId: 'real_p1' },
+            { machineId: 'm_1', profileId: 'p1?x=1' },
             { machineId: 'm_1', profileId: 'real_p1', activeTab: 'bad-tab', terminalSessionName: 'bad-sess', desktopViewOnly: 'yes' },
             { machineId: 'm_1', profileId: 'real_p1', activeTab: 'split', terminalSessionName: 'bad-sess', desktopViewOnly: true },
           ],

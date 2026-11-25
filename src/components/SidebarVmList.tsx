@@ -1,5 +1,5 @@
 // src/components/SidebarVmList.tsx
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import {
   Search,
@@ -38,6 +38,16 @@ export const SidebarVmList: React.FC<SidebarVmListProps> = ({ isOpen, onClose })
     controlMachine,
     deleteMachine,
   } = useAppStore();
+
+  const [pendingKeys, setPendingKeys] = useState<Set<string>>(() => new Set());
+  const pendingKeysRef = useRef<Set<string>>(new Set());
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const setPending = (key: string, active: boolean) => {
+    if (active) pendingKeysRef.current.add(key);
+    else pendingKeysRef.current.delete(key);
+    setPendingKeys(new Set(pendingKeysRef.current));
+  };
 
   // 필터링 적용
   const filteredMachines = machines.filter((m) => {
@@ -100,13 +110,32 @@ export const SidebarVmList: React.FC<SidebarVmListProps> = ({ isOpen, onClose })
 
   const handleAction = async (e: React.MouseEvent, m: InstaboxMachine, action: 'start' | 'stop' | 'suspend' | 'resume') => {
     e.stopPropagation();
-    await controlMachine(m.id, m.profileId, action);
+    const key = `${m.profileId}:${m.id}`;
+    if (pendingKeysRef.current.has(key)) return;
+    setPending(key, true);
+    setActionError(null);
+    try {
+      await controlMachine(m.id, m.profileId, action);
+    } catch (err: unknown) {
+      setActionError(`${m.name} (${action}): ${err instanceof Error ? err.message : 'Action failed'}`);
+    } finally {
+      setPending(key, false);
+    }
   };
 
   const handleDelete = async (e: React.MouseEvent, m: InstaboxMachine) => {
     e.stopPropagation();
-    if (confirm(`Are you sure you want to permanently delete machine ${m.name}? This cannot be undone.`)) {
+    const key = `${m.profileId}:${m.id}`;
+    if (pendingKeysRef.current.has(key)) return;
+    if (!confirm(`Are you sure you want to permanently delete machine ${m.name}? This cannot be undone.`)) return;
+    setPending(key, true);
+    setActionError(null);
+    try {
       await deleteMachine(m.id, m.profileId, m.name);
+    } catch (err: unknown) {
+      setActionError(`${m.name} (delete): ${err instanceof Error ? err.message : 'Delete failed'}`);
+    } finally {
+      setPending(key, false);
     }
   };
 
@@ -131,6 +160,20 @@ export const SidebarVmList: React.FC<SidebarVmListProps> = ({ isOpen, onClose })
             {Object.entries(profileErrors).map(([id, error]) => (
               <p key={id}>{profiles.find((profile) => profile.id === id)?.label ?? id}: {error}</p>
             ))}
+          </div>
+        )}
+
+        {actionError && (
+          <div role="alert" className="border border-red-800 bg-red-950/60 p-2 text-[11px] text-red-200 flex items-start justify-between gap-2">
+            <span className="break-words">{actionError}</span>
+            <button
+              type="button"
+              onClick={() => setActionError(null)}
+              aria-label="Dismiss machine action error"
+              className="text-red-300 hover:text-white font-bold flex-shrink-0"
+            >
+              ×
+            </button>
           </div>
         )}
 
@@ -195,6 +238,7 @@ export const SidebarVmList: React.FC<SidebarVmListProps> = ({ isOpen, onClose })
             const isRunning = m.state === 'running';
             const isSuspended = m.state === 'suspended';
             const isStopped = m.state === 'stopped';
+            const isBusy = pendingKeys.has(`${m.profileId}:${m.id}`);
             const vmTiles = tiles.filter((t) => t.machineId === m.id && t.profileId === m.profileId);
 
             return (
@@ -302,8 +346,9 @@ export const SidebarVmList: React.FC<SidebarVmListProps> = ({ isOpen, onClose })
                     {isRunning && (
                       <button
                         onClick={(e) => handleAction(e, m, 'suspend')}
+                        disabled={isBusy}
                         title="Pause / Suspend"
-                        className="p-1 text-zinc-400 hover:text-amber-400 hover:bg-zinc-800 transition-colors"
+                        className="p-1 text-zinc-400 hover:text-amber-400 hover:bg-zinc-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         <Pause className="w-3 h-3" />
                       </button>
@@ -311,8 +356,9 @@ export const SidebarVmList: React.FC<SidebarVmListProps> = ({ isOpen, onClose })
                     {isSuspended && (
                       <button
                         onClick={(e) => handleAction(e, m, 'resume')}
+                        disabled={isBusy}
                         title="Resume"
-                        className="p-1 text-zinc-400 hover:text-emerald-400 hover:bg-zinc-800 transition-colors"
+                        className="p-1 text-zinc-400 hover:text-emerald-400 hover:bg-zinc-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         <Play className="w-3 h-3" />
                       </button>
@@ -320,8 +366,9 @@ export const SidebarVmList: React.FC<SidebarVmListProps> = ({ isOpen, onClose })
                     {isStopped && (
                       <button
                         onClick={(e) => handleAction(e, m, 'start')}
+                        disabled={isBusy}
                         title="Start"
-                        className="p-1 text-zinc-400 hover:text-emerald-400 hover:bg-zinc-800 transition-colors"
+                        className="p-1 text-zinc-400 hover:text-emerald-400 hover:bg-zinc-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         <Play className="w-3 h-3" />
                       </button>
@@ -329,16 +376,18 @@ export const SidebarVmList: React.FC<SidebarVmListProps> = ({ isOpen, onClose })
                     {isRunning && (
                       <button
                         onClick={(e) => handleAction(e, m, 'stop')}
+                        disabled={isBusy}
                         title="Stop / Shutdown"
-                        className="p-1 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
+                        className="p-1 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         <Power className="w-3 h-3" />
                       </button>
                     )}
                     <button
                       onClick={(e) => handleDelete(e, m)}
+                      disabled={isBusy}
                       title="Terminate Machine"
-                      className="p-1 text-zinc-500 hover:text-red-400 hover:bg-zinc-800 transition-colors"
+                      className="p-1 text-zinc-500 hover:text-red-400 hover:bg-zinc-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>

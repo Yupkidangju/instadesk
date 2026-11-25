@@ -16,10 +16,10 @@ npm run desktop:dev
 
 [같은 버전의 GitHub Release](https://github.com/Yupkidangju/instadesk/releases)에서 아카이브와 `SHA256SUMS.txt`를 함께 받아 설치 전에 확인합니다. 아래 명령은 **공개 다운로드 파일**용입니다. 로컬에서 새로 빌드한 아카이브는 CI 아카이브와 바이트 단위로 같다고 보장하지 않습니다.
 
-Windows PowerShell (`InstaDesk-2.1.3-win-x64.zip`과 체크섬 파일을 같은 디렉터리에 둠):
+Windows PowerShell (`InstaDesk-2.2.1-win-x64.zip`과 체크섬 파일을 같은 디렉터리에 둠):
 
 ```powershell
-$archive = 'InstaDesk-2.1.3-win-x64.zip'
+$archive = 'InstaDesk-2.2.1-win-x64.zip'
 $entry = @(Get-Content -LiteralPath 'SHA256SUMS.txt' | Where-Object { ($_ -split '\s+', 2)[1] -eq $archive })
 if ($entry.Count -ne 1) { throw 'Checksum entry missing or duplicated' }
 $expected = ($entry[0] -split '\s+', 2)[0].ToLowerInvariant()
@@ -32,7 +32,7 @@ Linux x64/arm64 (`x64`를 설치할 아키텍처로 변경):
 
 ```bash
 set -euo pipefail
-name=InstaDesk-2.1.3-linux-x64
+name=InstaDesk-2.2.1-linux-x64
 grep -F "  ${name}.tar.gz" SHA256SUMS.txt | sha256sum -c -
 ```
 
@@ -44,7 +44,7 @@ grep -F "  ${name}.tar.gz" SHA256SUMS.txt | sha256sum -c -
 npm run package:win
 ```
 
-`release/InstaDesk-2.1.3-win-x64/`와 같은 이름의 ZIP이 생깁니다. 스크립트는 기존 같은 이름의 산출물을 덮어쓰지 않습니다. 버전을 변경하거나 기존 산출물을 별도로 보관한 뒤 다시 실행하세요. ZIP을 압축 해제해 `InstaDesk.exe`를 실행합니다. 사용자 볼트는 실행 폴더가 아닌 Windows의 앱 사용자 데이터 영역에 저장됩니다. 설치 프로그램, 코드 서명, 자동 업데이트는 포함되지 않습니다.
+`release/InstaDesk-2.2.1-win-x64/`와 같은 이름의 ZIP이 생깁니다. 스크립트는 기존 같은 이름의 산출물을 덮어쓰지 않습니다. 버전을 변경하거나 기존 산출물을 별도로 보관한 뒤 다시 실행하세요. ZIP을 압축 해제해 `InstaDesk.exe`를 실행합니다. 사용자 볼트는 실행 폴더가 아닌 Windows의 앱 사용자 데이터 영역에 저장됩니다. 설치 프로그램, 코드 서명, 자동 업데이트는 포함되지 않습니다.
 
 볼트는 Windows의 `%APPDATA%\InstaDesk`, Linux의 `$XDG_CONFIG_HOME/InstaDesk`(설정되지 않았으면 `~/.config/InstaDesk`)에 해당하는 Electron 사용자/세션 데이터 경로에 저장합니다. 버전별 폴더가 아니므로 앱 교체 전에 이 사용자 데이터 디렉터리를 삭제하지 마세요. 동일 OS 사용자에서 보이지 않으면 새 볼트 초기화 전에 경로·계정을 확인하세요.
 
@@ -59,7 +59,7 @@ npm ci
 npm run desktop:install
 npm test
 npm run package:linux
-name="InstaDesk-2.1.3-linux-$(node -p 'process.arch')"
+name="InstaDesk-2.2.1-linux-$(node -p 'process.arch')"
 sudo install -d -m 0755 /opt/instadesk
 sudo tar -xzf "release/${name}.tar.gz" -C /opt/instadesk
 sudo chown -R root:root "/opt/instadesk/${name}"
@@ -71,7 +71,7 @@ sudo chmod 4755 "/opt/instadesk/${name}/chrome-sandbox"
 
 ## CI/CD와 릴리스
 
-`.github/workflows/desktop.yml`은 `main` push와 수동 실행 때 Windows x64·Linux x64·Linux arm64를 각각 검사·패키징하고 아티팩트로 올립니다. 버전 태그 `v2.1.3` push 때는 세 아키텍처의 패키지 로드 스모크가 모두 성공한 뒤에만 세 아카이브와 `SHA256SUMS.txt`를 GitHub Release로 게시합니다. 빌드 아티팩트와 공식 릴리스 자산을 구분하세요.
+`.github/workflows/desktop.yml`은 `main` push와 수동 실행 때 Windows x64·Linux x64·Linux arm64를 각각 검사·패키징하고 아티팩트로 올립니다. 버전 태그 `v2.2.1` push 때는 세 아키텍처의 패키지 로드 스모크가 모두 성공한 뒤에만 세 아카이브와 `SHA256SUMS.txt`를 GitHub Release로 게시합니다. 빌드 아티팩트와 공식 릴리스 자산을 구분하세요.
 
 ## 사용
 

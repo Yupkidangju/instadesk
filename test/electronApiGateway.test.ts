@@ -32,6 +32,24 @@ describe('Electron main API gateway', () => {
     expect(upstream).not.toHaveBeenCalled();
   });
 
+  it('rejects paths outside /v1/machines and encoded path separators or null bytes (SEC-F013)', async () => {
+    const upstream = vi.fn();
+    const invalidUrls = [
+      'app://instadesk/instabox-api/v1/billing',
+      'app://instadesk/instabox-api/v1/machines/../other',
+      'app://instadesk/instabox-api/v1/machines/m_1%2f..%2fother',
+      'app://instadesk/instabox-api/v1/machines/m_1%5cfoo',
+      'app://instadesk/instabox-api/v1/machines/m_1%00',
+    ];
+    for (const url of invalidUrls) {
+      const res = await proxyApiRequest(new Request(url, {
+        headers: { Authorization: 'Bearer ibk_test_only' },
+      }), upstream);
+      expect(res.status).toBe(404);
+    }
+    expect(upstream).not.toHaveBeenCalled();
+  });
+
   it('streams SSE unchanged and rejects upstream redirects', async () => {
     const stream = new ReadableStream({
       start(controller) { controller.enqueue(new TextEncoder().encode('event: stdout\ndata: ok\n\n')); controller.close(); },

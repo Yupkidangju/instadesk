@@ -1,5 +1,5 @@
 // src/components/telemetry/MetricsLogsView.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { instaboxClient } from '../../services/instaboxClient';
 import { MachineLogsResponse, MachineMetricsResponse } from '../../types/instabox';
 import { RefreshCw, FileText, Activity } from 'lucide-react';
@@ -14,27 +14,60 @@ export const MetricsLogsView: React.FC<MetricsLogsViewProps> = ({ machineId, pro
   const [metrics, setMetrics] = useState<MachineMetricsResponse | null>(null);
   const [activeSubTab, setActiveSubTab] = useState<'console' | 'metrics'>('console');
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
+  const mountedRef = useRef(true);
+  const inFlightRef = useRef(false);
 
-  const loadData = async () => {
+  const loadData = async (fromInterval = false) => {
+    if (fromInterval && inFlightRef.current) return;
+    const requestId = ++requestIdRef.current;
+    inFlightRef.current = true;
     setIsLoading(true);
     try {
-      const [l, m] = await Promise.all([
+      const [logsResult, metricsResult] = await Promise.allSettled([
         instaboxClient.getLogs(profileId, machineId, 150),
         instaboxClient.getMetrics(profileId, machineId),
       ]);
-      setLogs(l);
-      setMetrics(m);
-    } catch (err: unknown) {
-      console.error('Failed to load telemetry:', err);
+      if (!mountedRef.current || requestId !== requestIdRef.current) return;
+
+      const errors: string[] = [];
+      if (logsResult.status === 'fulfilled') {
+        setLogs(logsResult.value);
+      } else {
+        const msg = logsResult.reason instanceof Error ? logsResult.reason.message : 'Failed to load logs';
+        errors.push(`Logs: ${msg}`);
+      }
+
+      if (metricsResult.status === 'fulfilled') {
+        setMetrics(metricsResult.value);
+      } else {
+        const msg = metricsResult.reason instanceof Error ? metricsResult.reason.message : 'Failed to load metrics';
+        errors.push(`Metrics: ${msg}`);
+      }
+
+      setErrorMessage(errors.length > 0 ? errors.join(' · ') : null);
     } finally {
-      setIsLoading(false);
+      if (requestId === requestIdRef.current) {
+        inFlightRef.current = false;
+        if (mountedRef.current) setIsLoading(false);
+      }
     }
   };
 
   useEffect(() => {
-    loadData();
-    const timer = setInterval(loadData, 15000);
-    return () => clearInterval(timer);
+    mountedRef.current = true;
+    setLogs(null);
+    setMetrics(null);
+    setErrorMessage(null);
+    void loadData(false);
+    const timer = setInterval(() => void loadData(true), 15000);
+    return () => {
+      mountedRef.current = false;
+      requestIdRef.current += 1;
+      inFlightRef.current = false;
+      clearInterval(timer);
+    };
   }, [machineId, profileId]);
 
   return (
@@ -67,13 +100,19 @@ export const MetricsLogsView: React.FC<MetricsLogsViewProps> = ({ machineId, pro
         </div>
 
         <button
-          onClick={loadData}
+          onClick={() => void loadData(false)}
           title="Refresh Logs & Metrics"
           className="p-1 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
         >
           <RefreshCw className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} />
         </button>
       </div>
+
+      {errorMessage && (
+        <div role="alert" className="bg-red-950/60 border-b border-red-800 text-red-300 text-xs font-mono px-3 py-1">
+          {errorMessage}
+        </div>
+      )}
 
       {/* 컨텐츠 영역 */}
       <div className="flex-1 overflow-y-auto p-3">

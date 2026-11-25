@@ -1,5 +1,5 @@
 // src/components/modals/ApiKeyModal.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { instaboxClient } from '../../services/instaboxClient';
 import { cryptoVault, MAX_FAILED_UNLOCK_ATTEMPTS } from '../../services/cryptoVault';
@@ -42,6 +42,8 @@ export const ApiKeyModal: React.FC = () => {
   const [pendingDelete, setPendingDelete] = useState<{ id: string; label: string } | null>(null);
 
   const [isValidating, setIsValidating] = useState(false);
+  const [isVaultSubmitting, setIsVaultSubmitting] = useState(false);
+  const vaultSubmittingRef = useRef(false);
 
   useEffect(() => {
     if (!isVaultUnlocked || !isApiKeyModalOpen) {
@@ -77,6 +79,7 @@ export const ApiKeyModal: React.FC = () => {
 
   const handleInitVault = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (vaultSubmittingRef.current) return;
     setErrorMsg(null);
     setSuccessMsg(null);
 
@@ -91,6 +94,8 @@ export const ApiKeyModal: React.FC = () => {
       return;
     }
 
+    vaultSubmittingRef.current = true;
+    setIsVaultSubmitting(true);
     try {
       await initializeVault(masterPassword);
       setSuccessMsg('Encrypted local vault initialized. AES-256-GCM ready.');
@@ -99,12 +104,18 @@ export const ApiKeyModal: React.FC = () => {
     } catch (err: unknown) {
       setErrorMsg((err as Error).message);
       setMasterPassword(''); setConfirmPassword('');
+    } finally {
+      vaultSubmittingRef.current = false;
+      setIsVaultSubmitting(false);
     }
   };
 
   const handleUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (vaultSubmittingRef.current) return;
     setErrorMsg(null);
+    vaultSubmittingRef.current = true;
+    setIsVaultSubmitting(true);
     try {
       const ok = await unlockVault(masterPassword);
       if (ok) {
@@ -114,6 +125,9 @@ export const ApiKeyModal: React.FC = () => {
     } catch (err: unknown) {
       setErrorMsg((err as Error).message);
       setMasterPassword('');
+    } finally {
+      vaultSubmittingRef.current = false;
+      setIsVaultSubmitting(false);
     }
   };
 
@@ -160,16 +174,24 @@ export const ApiKeyModal: React.FC = () => {
 
   const handleChangePassword = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (vaultSubmittingRef.current) return;
     setErrorMsg(null); setSuccessMsg(null);
     const oldValue = currentPassword;
     const newValue = nextPassword;
     const matches = nextPassword === nextPasswordConfirm;
     setCurrentPassword(''); setNextPassword(''); setNextPasswordConfirm('');
     if (!matches) { setErrorMsg('Passphrases do not match.'); return; }
+    vaultSubmittingRef.current = true;
+    setIsVaultSubmitting(true);
     try {
       await changeMasterPassword(oldValue, newValue);
       setSuccessMsg('Master passphrase changed. Encrypted profiles were preserved.');
-    } catch (error) { setErrorMsg((error as Error).message); }
+    } catch (error) {
+      setErrorMsg((error as Error).message);
+    } finally {
+      vaultSubmittingRef.current = false;
+      setIsVaultSubmitting(false);
+    }
   };
 
   return (
@@ -241,7 +263,7 @@ export const ApiKeyModal: React.FC = () => {
                     required
                   />
                 </div>
-                <button type="submit" className="neo-btn-primary w-full py-1.5">
+                <button type="submit" disabled={isVaultSubmitting} className="neo-btn-primary w-full py-1.5">
                   INITIALIZE ENCRYPTED VAULT
                 </button>
               </form>
@@ -264,7 +286,7 @@ export const ApiKeyModal: React.FC = () => {
                     className="flex-1 bg-zinc-950 border border-zinc-800 p-2 text-xs focus:outline-none focus:border-zinc-500"
                     required
                   />
-                  <button type="submit" className="neo-btn-primary px-4">
+                  <button type="submit" disabled={isVaultSubmitting} className="neo-btn-primary px-4">
                     <Unlock className="w-3.5 h-3.5 mr-1" />
                     UNLOCK
                   </button>
@@ -294,7 +316,7 @@ export const ApiKeyModal: React.FC = () => {
               <input type="password" placeholder="CURRENT MASTER PASSPHRASE" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required className="w-full bg-zinc-950 border border-zinc-800 p-2 text-xs" />
               <input type="password" placeholder="NEW MASTER PASSPHRASE (MIN 15 CHARS)" value={nextPassword} onChange={e => setNextPassword(e.target.value)} required className="w-full bg-zinc-950 border border-zinc-800 p-2 text-xs" />
               <input type="password" placeholder="CONFIRM NEW PASSPHRASE" value={nextPasswordConfirm} onChange={e => setNextPasswordConfirm(e.target.value)} required className="w-full bg-zinc-950 border border-zinc-800 p-2 text-xs" />
-              <button type="submit" className="neo-btn w-full py-1.5">CHANGE PASSPHRASE</button>
+              <button type="submit" disabled={isVaultSubmitting} className="neo-btn w-full py-1.5">CHANGE PASSPHRASE</button>
             </form>
           )}
 

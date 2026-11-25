@@ -85,9 +85,17 @@ const demoMachines: InstaboxMachine[] = [
 ];
 
 class InstaboxClientService {
+  private static readonly SAFE_MACHINE_ID = /^[A-Za-z0-9_-]{1,128}$/;
   private activeRequests = new AbortController();
   private requestEpoch = 0;
   private profileRequests = new Map<string, AbortController>();
+
+  private machinePath(machineId: string, suffix = ''): string {
+    if (!InstaboxClientService.SAFE_MACHINE_ID.test(machineId)) {
+      throw new Error('Invalid machine identifier');
+    }
+    return `/v1/machines/${encodeURIComponent(machineId)}${suffix}`;
+  }
 
   private profileSignal(profileId: string): AbortSignal {
     let controller = this.profileRequests.get(profileId);
@@ -216,7 +224,7 @@ class InstaboxClientService {
       return { ...found };
     }
 
-    return await this.request<InstaboxMachine>(profileId, `/v1/machines/${machineId}`);
+    return await this.request<InstaboxMachine>(profileId, this.machinePath(machineId));
   }
 
   /**
@@ -274,7 +282,7 @@ class InstaboxClientService {
       return { operationId: `op_${action}_${machineId}` };
     }
 
-    return await this.request<{ operationId?: string }>(profileId, `/v1/machines/${machineId}/${action}`, {
+    return await this.request<{ operationId?: string }>(profileId, this.machinePath(machineId, `/${action}`), {
       method: 'POST',
       headers: {
         'Idempotency-Key': crypto.randomUUID(),
@@ -293,7 +301,7 @@ class InstaboxClientService {
       return;
     }
 
-    await this.request(profileId, `/v1/machines/${machineId}`, {
+    await this.request(profileId, this.machinePath(machineId), {
       method: 'DELETE',
       headers: {
         'Idempotency-Key': crypto.randomUUID(),
@@ -323,7 +331,7 @@ class InstaboxClientService {
       };
     }
 
-    return await this.request<DesktopStatus>(profileId, `/v1/machines/${machineId}/desktop`, {
+    return await this.request<DesktopStatus>(profileId, this.machinePath(machineId, '/desktop'), {
       method: 'POST',
       body: JSON.stringify({ action, width, height }),
     });
@@ -345,7 +353,7 @@ class InstaboxClientService {
       };
     }
 
-    return await this.request<DesktopStreamLink>(profileId, `/v1/machines/${machineId}/desktop/stream`, {
+    return await this.request<DesktopStreamLink>(profileId, this.machinePath(machineId, '/desktop/stream'), {
       method: 'POST',
       body: JSON.stringify({ viewOnly, ttlSeconds }),
     });
@@ -368,7 +376,7 @@ class InstaboxClientService {
       };
     }
 
-    return await this.request<AccessTicket>(profileId, `/v1/machines/${machineId}/access`, {
+    return await this.request<AccessTicket>(profileId, this.machinePath(machineId, '/access'), {
       method: 'POST',
       body: JSON.stringify({ kind, requireTicket: true }),
     });
@@ -463,13 +471,14 @@ class InstaboxClientService {
     }
 
     try {
+      const execPath = this.machinePath(machineId, '/exec');
       const epoch = this.requestEpoch;
       const ownerSignal = this.profileSignal(profileId);
       await cryptoVault.withDecryptedKey(profileId, async (apiKey) => {
         if (epoch !== this.requestEpoch) throw new DOMException('Vault locked', 'AbortError');
         ownerSignal.throwIfAborted();
         const baseUrl = getApiBaseUrl();
-        const url = `${baseUrl}/v1/machines/${machineId}/exec`;
+        const url = `${baseUrl}${execPath}`;
 
         const combinedSignal = AbortSignal.any([
           this.activeRequests.signal,
@@ -592,7 +601,7 @@ class InstaboxClientService {
       return { metrics: samples };
     }
 
-    return await this.request<MachineMetricsResponse>(profileId, `/v1/machines/${machineId}/metrics`);
+    return await this.request<MachineMetricsResponse>(profileId, this.machinePath(machineId, '/metrics'));
   }
 
   /**
@@ -612,7 +621,8 @@ class InstaboxClientService {
       };
     }
 
-    return await this.request<MachineLogsResponse>(profileId, `/v1/machines/${machineId}/logs?tail=${tail}`);
+    const safeTail = Number.isFinite(tail) ? Math.max(1, Math.min(5000, Math.floor(tail))) : 100;
+    return await this.request<MachineLogsResponse>(profileId, this.machinePath(machineId, `/logs?tail=${safeTail}`));
   }
 
   /**
@@ -635,7 +645,7 @@ class InstaboxClientService {
       };
     }
 
-    return await this.request<ProcessListResponse>(profileId, `/v1/machines/${machineId}/processes`);
+    return await this.request<ProcessListResponse>(profileId, this.machinePath(machineId, '/processes'));
   }
 }
 
